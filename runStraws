@@ -1,0 +1,2 @@
+
+	g++ -g  TestStraws.C -o TestStraws `root-config --libs` `root-config --cflags`
