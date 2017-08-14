@@ -1,0 +1,9 @@
+Changes to Barry's Teststraws.C code:
+
+- Can now take command line options like verbosity, filenames, file creation, etc, and parse them.
+
+- Prints set of instructions when "--help" or "-h" is typed.
+
+- variable = variable + 1; is now variable++;
+
+- Added error checking when loading user-specified file
