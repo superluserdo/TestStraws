@@ -1,6 +1,6 @@
  // ---------------------------------------------------------------------
 // Version of TestStraws for use with data taken during the QA tests
-// of each module.
+// of each module. Altered by Tom (changes finished 16/09/2017).
 // ---------------------------------------------------------------------
 #include "TROOT.h"
 #include "TChain.h"
@@ -21,7 +21,7 @@
 #include "TMath.h"
 #include "TRandom3.h"
 #include "TLeaf.h"
-//
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -36,11 +36,10 @@ using namespace std;
 #include <TGraph.h>
 #include <TRandom3.h>
 #include <TColor.h>
+#include "TestStraws.h"
 
-#define PI 3.1415926535
-#define MODULES 3
-#define LAYERS 4
-#define STRAWS 32
+int n_HitsOut = 0;
+int allow_3Hit = 0;
 // --------------------------------------------------------------
 // Event
 // TriggerTime
@@ -51,54 +50,9 @@ using namespace std;
 // Layer
 // Wire
 //
-int testcount = 0;
-struct StrawData {
-       unsigned int run;
-       unsigned int event;
-       double triggerTime;
-       double hitTime;
-       int station;
-       int module;
-       int iview;
-       int layer;
-       int wire;
-};
-struct ScintData {
-       unsigned int run;
-       unsigned int event;
-       double triggerTime;
-       double hitTime;
-       int station;
-       int module;
-       int iview;
-       int layer;
-       int wire;
-};
-struct singleStraw {
-	float Xbot;
-	float Xtop;
-	float Ybot;
-	float Ytop;
-	float Zbot;
-	float Ztop;
-}straw;
-struct strawEndsStruct {
-	float Zendc;
-	float Xendc;
-	float Zenda;
-	float Xenda;
-	float Zendcb;
-	float Xendcb;
-	float Zendab;
-	float Xendab;
-	float Zzendc;
-	float Xxendc;
-	float Zzenda;
-	float Xxenda;
-}strawEnds;
-// --------------------------------------------------------------
-// Now my stuff from TestStraws.h:
-// --------------------------------------------------------------
+
+struct singleStraw straw;
+struct strawEndsStruct strawEnds;
       const int Nmax = 2; 
       TRandom3* Rnd = new TRandom3;
       int IcallRndm = 0;
@@ -133,28 +87,30 @@ struct strawEndsStruct {
 // Now all the arrays used in the actual track finding.
 // --------------------------------------------------------------
       float Zpos;
-      float Xzstraw[6][32][4][3];
+     float Xzstraw[6][STRAWS][LAYERS][MODULES];
       float strawGeom[MODULES][LAYERS][STRAWS][2][3];
       float strawGeom_u[MODULES][LAYERS][STRAWS][2][3];
       float strawGeom_v[MODULES][LAYERS][STRAWS][2][3];
+	float (*strawGeoms[3])[MODULES][LAYERS][STRAWS][2][3] = {
+	&strawGeom_u, &strawGeom_v, &strawGeom};
       float Diam;
       float Ylength;
       float Size[4];
-//      float Xzstrau[6][32][4][3];
-//      float Xzstrav[6][32][4][3];
-      float Xzaty[2][32][4][3];
-      int   Iexist[32][4][3];
-      float Pedest[32][4][3];
+//      float Xzstrau[6][STRAWS][LAYERS][MODULES];
+//      float Xzstrav[6][STRAWS][LAYERS][MODULES];
+      float Xzaty[2][STRAWS][LAYERS][MODULES];
+      int   Iexist[STRAWS][LAYERS][MODULES];
+      float Pedest[STRAWS][LAYERS][MODULES];
       float T0data;
       float Tofl;
       float Yped;
-      float Hits[32][4][3];
-      float Dtimes[32][4][3];
-      float Tof[32][4][3];
-      float Rtimes[32][4][3];
-      int   Mask[32][4][3];
-      float Yhits[32][4][3];
-      float Zxhit[2][32][4][3];
+      float Hits[STRAWS][LAYERS][MODULES];
+      float Dtimes[STRAWS][LAYERS][MODULES];
+      float Tof[STRAWS][LAYERS][MODULES];
+      float Rtimes[STRAWS][LAYERS][MODULES];
+      int   Mask[STRAWS][LAYERS][MODULES];
+      float Yhits[STRAWS][LAYERS][MODULES];
+      float Zxhit[2][STRAWS][LAYERS][MODULES];
       float Trkinf[60][3];
       float Trkin2[60][3];
       float Trkin3[60][3];
@@ -190,68 +146,6 @@ struct strawEndsStruct {
    };
    StrHist_t          StrHist;
 //
-   void DefineColours();
-   void BookHistograms();
-   void BookStrHistograms();
-//
-   void geom_init();
-   void geom_Init();
-   void zero_Init(int imode);
-   void WriteStraws();
-   void StudyStraws(int iev);
-   void PlotHistograms();
-   void PlotStrHistograms(int Ipage);
-   void WriteHistograms();
-   void WriteStrHistograms(int Ipage);
-   int  mod(int n1, int n2);
-   float randomFloat();
-//
-   void Vfill(float* Array, int Len, float Value);
-   void Vzero(float* Array, int Len);
-   void xy2u(float xx,float yy, float &xu, float &yu);
-   void xy2v(float xx,float yy, float &xv, float &yv);
-   void u2xy(float xu,float yu, float &xx, float &yy);
-   void v2xy(float xv,float yv, float &xx, float &yy);
-//
-   void straw_NearestTangent(float zz1,float xx1,float zz2,float xx2,int Nstraw,int Layer,int Nmod,float &Zpt, float &Xpt);
-   void straw_LocalAngle(float zz1,float xx1,float zz2,float xx2,int Nst,int Nlay,int Nmod,float &Angle, int &Iflag);
-   void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Icand,
-               float &zz1,float &xx1,float &zz2,float &xx2,int &Iflag);
-   void straw_FillArray(int Nstraw, int Layer, int Nmod, float zpt, float xpt);
-   void straw_ClosestPoint(float Gr,float c1,float Xpt,float Ypt,float &Xinter,float &Yinter);
-   void straw_TimeDist_1(float Time,float &Dist);
-   void straw_TimeDist_2(float Time,float &Dist);
-   void straw_TimeDist_3(float Time,float &Dist);
-   void Linfit(float* Xpts,float* Ypts,int Npts,float &Grad,float &Cint);
-//
-   int  round(float var);
-   float phi_arctan(float py , float px);
-//
-   void straw_FindTrack_4(int Nmod, ofstream &trackeventsfile);
-   void straw_FindTrack_3(int Nmod);
-   void Strte2(int Nmod,int iStraws[LAYERS]);
-   void Strte3(int Nmod,int iStraws[LAYERS]); 
-   void Strana(ofstream &trackeventsfile);
-   void Strevt(int &Goodt0);
-//
-   double FitBack(double* x, double* par);
-   double Lorentzian(double* x, double* par);
-   double Gaussian1(double* x, double* par);
-   double Gaussian2(double* x, double* par);
-   double FitFunction(double* x, double* par);
-   double FitFunction2(double* x, double* par);
-
-   float getSingleStraw(int Nmod, int ilay, int istr);
-float getEnds(int Nmod, int ilay, int istr, int arg);
-int getEndsLoop(int Nmod, float Y, int iStraws[LAYERS], int arg);
-int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
-
-    struct options_struct {
-	int help;
-	int file;
-	int verbose;
-	int output;
-};
 
     struct options_struct options = {
 	options.help = 0,
@@ -271,6 +165,12 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 // -----------------------------------------------------------------------------------
       ofstream trackeventsfile;
       trackeventsfile.open ("trackevents.txt");
+      trackeventsfile << "layout = {\n\n";
+      	
+      trackeventsfile << "	    modules = " << MODULES << "\n";
+      trackeventsfile << "	    layers = " << LAYERS << "\n";
+      trackeventsfile << "	    straws = " << STRAWS << "\n";
+      trackeventsfile << "}\n\n";
       trackeventsfile << "trackevents = (\n\n";
       trackeventsfile << fixed;
       trackeventsfile << setprecision(5);
@@ -422,6 +322,7 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
   //exit (0);
 
     if (inFile->IsZombie()) {
+       printf("Something wrong with input file\n");
   	exit(-1);
     }
 
@@ -451,22 +352,22 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 // -------------------------------------------------------------------
 // Loop round 10 times filling 100 hits into arrays.
 // -------------------------------------------------------------------
-    for(int iloop=1; iloop<=3000; iloop++) {
-       int istart = 100*(iloop-1) + 1;
-       int iend   = istart + 99;
-       for(int ia=1; ia<=100; ia++) {
-          Iruns[ia-1] = 0;
-          Ievts[ia-1] = 0;
-          TrigTimes[ia-1] = 0.0;
-          Layers[ia-1] = 0;
-          Istraw[ia-1] = 0;
-          Module[ia-1] = 0;
-          RawTimes[ia-1] = 0.0;
-          Iviews[ia-1] = 0;
+    for(int iloop = 0; iloop < 3000; iloop++) {
+       int istart = 100*(iloop);
+       int iend   = istart + 100;
+       for(int ia = 0; ia < 100; ia++) {
+          Iruns[ia] = 0;
+          Ievts[ia] = 0;
+          TrigTimes[ia] = 0.0;
+          Layers[ia] = 0;
+          Istraw[ia] = 0;
+          Module[ia] = 0;
+          RawTimes[ia] = 0.0;
+          Iviews[ia] = 0;
        }
 //
        int iev = 0;
-       for (int jentry=(istart-1); jentry <= (iend-1); jentry++) {
+       for (int jentry = istart; jentry < iend; jentry++) {
            strawTree->GetEntry(jentry);
            scintTree->GetEntry(jentry);
            int jstraw = strawHit.wire;
@@ -475,16 +376,14 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 //                         iok = 0;
 //         }
            if(iok == 1) {
-             iev++;
-//
-             Iruns[iev-1]      = strawHit.run;
-             Ievts[iev-1]      = strawHit.event;
-             Istraw[iev-1]     = strawHit.wire;
-             Layers[iev-1]     = strawHit.layer;
-             Module[iev-1]     = strawHit.module;
-             TrigTimes[iev-1]  = strawHit.triggerTime;
-             RawTimes[iev-1]   = strawHit.hitTime; 
-             Iviews[iev-1]     = strawHit.iview;
+             Iruns[iev]      = strawHit.run;
+             Ievts[iev]      = strawHit.event;
+             Istraw[iev]     = strawHit.wire;
+             Layers[iev]     = strawHit.layer;
+             Module[iev]     = strawHit.module;
+             TrigTimes[iev]  = strawHit.triggerTime;
+             RawTimes[iev]   = strawHit.hitTime; 
+             Iviews[iev]     = strawHit.iview;
 //
              int jrunscint     = scintHit.run;
              int jevscint      = scintHit.event;
@@ -496,24 +395,24 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
              int Layscint      = scintHit.layer;
              int jscint        = scintHit.wire;
 //     
-             if(Layers[iev-1] > -1) {
-               if(Iviews[iev-1] == 1) {
-                        Layers[iev-1] = Layers[iev-1] + 2;
+             if(Layers[iev] > -1) {
+               if(Iviews[iev] == 1) {
+                        Layers[iev] = Layers[iev] + 2;
                }
 //
-               Istraw[iev-1]++;
-               Layers[iev-1]++;
-               Module[iev-1]++;
-               StrHist.fWire[0]->Fill(Istraw[iev-1]-0.5);
-               StrHist.fModule[0]->Fill(Module[iev-1]-0.5);
-               StrHist.fLayer[0]->Fill(Layers[iev-1]-0.5);
+               Istraw[iev]++;
+               Layers[iev]++;
+               Module[iev]++;
+               StrHist.fWire[0]->Fill(Istraw[iev]-0.5);
+               StrHist.fModule[0]->Fill(Module[iev]-0.5);
+               StrHist.fLayer[0]->Fill(Layers[iev]-0.5);
 //
-//             cout <<" Run "<<Iruns[iev-1] 
-//                  <<" Straw "<<Istraw[iev-1]<<" Layer: "<<Layers[iev-1]<< " Module: "<< Module[iev-1]
-//                  <<" Event: "<<Ievts[iev-1]<<" Trig: "<<TrigTimes[iev-1]
-//                  <<" HitTime: "<<RawTimes[iev-1]<<endl;
+//             cout <<" Run "<<Iruns[iev] 
+//                  <<" Straw "<<Istraw[iev]<<" Layer: "<<Layers[iev]<< " Module: "<< Module[iev]
+//                  <<" Event: "<<Ievts[iev]<<" Trig: "<<TrigTimes[iev]
+//                  <<" HitTime: "<<RawTimes[iev]<<endl;
 //
-//                  <<" Iview    "<<Iviews[iev-1]<<endl;
+//                  <<" Iview    "<<Iviews[iev]<<endl;
 //
 //             cout <<" Scint "<<jscint<<" Layer: "<<Layscint<< " Run: "<< jrunscint
 //                  <<" Event: "<<jevscint<<" Trig: "<<Trigscint
@@ -523,6 +422,8 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 //                int Iblob;
 //                cin>>Iblob;
              }
+             iev++;
+//
            }
        }
 // -------------------------------------------------------------------
@@ -606,14 +507,13 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
           Nhmods[0] = 0;
           Nhmods[1] = 0;
           Nhmods[2] = 0;
-          for(int igood=1; igood<=Ngood; igood++) {
-             int modd =  ModEvent[igood - 1];
-//printf("%d\n", igood);
-             Nhmods[modd-1]++; // <- Used to segfault here, think it's fine now
-             int layy =  LayEvent[igood - 1];
-             int istt =  IstEvent[igood - 1]; 
-             Rtimes[istt-1][layy-1][modd-1] = RawTevent[igood - 1];
-             float rrrr =  RawTevent[igood - 1];
+          for(int igood = 0; igood < Ngood; igood++) {
+             int modd =  ModEvent[igood];
+             Nhmods[modd-1]++;
+             int layy =  LayEvent[igood];
+             int istt =  IstEvent[igood]; 
+             Rtimes[istt-1][layy-1][modd-1] = RawTevent[igood];
+             float rrrr =  RawTevent[igood];
 //           cout<<" Unpacking hit in "<<istt<<" "<<layy<<" "<<modd<<" "<<rrrr<<endl;
           }
 //        cout<<" Numbers of hits in each module: "<<endl;
@@ -624,8 +524,8 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 // If a module has 4 hits check they are
 // in the different layers:
 // --------------------------------------
-          for(int imod=1; imod<=3; imod++) {
-             if(Nhmods[imod-1] == 4) {
+          for(int imod = 0; imod < MODULES; imod++) {
+             if(Nhmods[imod] == 4) {
 // Module has 4 hits:
                Nhlays[0] = 0;     
                Nhlays[1] = 0;
@@ -635,20 +535,20 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
                int is2   = 0;
                int is3   = 0;
                int is4   = 0;
-               for(int ist=1; ist<=32; ist++) {
-                  if(Rtimes[ist-1][0][imod-1] > 0.0) {
+               for(int ist = 0; ist < 32; ist++) {
+                  if(Rtimes[ist][0][imod] > 0.0) {
                     Nhlays[0]++;
                     is1 = ist;
                   }
-                  if(Rtimes[ist-1][1][imod-1] > 0.0) {
+                  if(Rtimes[ist][1][imod] > 0.0) {
                     Nhlays[1]++;
                     is2 = ist;
                   }
-                  if(Rtimes[ist-1][2][imod-1] > 0.0) {
+                  if(Rtimes[ist][2][imod] > 0.0) {
                     Nhlays[2]++;
                     is3 = ist;
                   }
-                  if(Rtimes[ist-1][3][imod-1] > 0.0) {
+                  if(Rtimes[ist][3][imod] > 0.0) {
                     Nhlays[3]++;
                     is4 = ist;
                   }
@@ -672,11 +572,11 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 //        }
           if(DoTracking == 1) {
 //          cout<<" About to track in event: "<<JevNo<<endl;
-            for(int imod=1;imod<=3; imod++) {
-               for(int ilay=1; ilay<=4; ilay++) {
-                  for(int istr=1; istr<=32; istr++) {
-                     if(Rtimes[istr-1][ilay-1][imod-1] > 0.0) {
-                       float rrr = Rtimes[istr-1][ilay-1][imod-1];
+            for(int imod = 0;imod < MODULES; imod++) {
+               for(int ilay = 0; ilay < LAYERS; ilay++) {
+                  for(int istr = 0; istr < STRAWS; istr++) {
+                     if(Rtimes[istr][ilay][imod] > 0.0) {
+                       float rrr = Rtimes[istr][ilay][imod];
 //                     cout<<" Hit in "<<istr<<" "<<ilay<<" "<<imod<<" "<<rrr<<endl;
                      }
                   }
@@ -688,9 +588,9 @@ int fill_TimeDist_arrays(float *TimeArray, float *DistArray, float Fac);
 // The Goodt0 flag indicates whether a reliable t0 has been obtained:
 // -------------------------------------------------------------------
             int Goodt0 = 0;
-            Strevt(Goodt0);
+            straw_Evt(Goodt0);
             if(Goodt0 == 1) {
-                           Strana(trackeventsfile);
+                           straw_Analyse(trackeventsfile);
             }
           }
 // -------------------------------------------------------------------
@@ -856,40 +756,40 @@ void BookStrHistograms() {
 // --------------------------------------------------------------------
 // Book all the Histograms:
 // --------------------------------------------------------------------
-       for(int i=1; i<=Nmax; i++) {
-          StrHist.fWire[i-1] = new TH1F(Form(" Wire %d", i-1)," Wire ",33,0.0,33.0);
-          StrHist.fWire[i-1]->SetFillColor(520-i);
-          StrHist.fLayer[i-1] = new TH1F(Form(" Layer %d", i-1)," Layer ",5,0.0,5.0);
-          StrHist.fLayer[i-1]->SetFillColor(519-i);
-          StrHist.fModule[i-1] = new TH1F(Form(" Module %d", i-1)," Module ",4,0.0,4.0);
-          StrHist.fModule[i-1]->SetFillColor(518-i);
-          StrHist.fdiff12[i-1] = new TH1F(Form(" diff12 %d", i-1)," diff12 ",120,-60.0,60.0);
-          StrHist.fdiff12[i-1]->SetFillColor(517-i);
-          StrHist.fdiff34[i-1] = new TH1F(Form(" diff34 %d", i-1)," diff34 ",120,-60.0,60.0);
-          StrHist.fdiff34[i-1]->SetFillColor(516-i);
-          StrHist.fDtimes[i-1] = new TH1F(Form(" Dtimes %d", i-1)," Dtimes ",100,0.0,100.0);
-          StrHist.fDtimes[i-1]->SetFillColor(515-i);
-          StrHist.fDdists[i-1] = new TH1F(Form(" Ddists %d", i-1)," Ddists ",120,0.0,0.3);
-          StrHist.fDdists[i-1]->SetFillColor(514-i);
-          StrHist.fTrkMod[i-1] = new TH1F(Form(" TrkMod %d", i-1)," TrkMod ",4,0.0,4.0);
-          StrHist.fTrkMod[i-1]->SetFillColor(504-i);
-          StrHist.fYbest[i-1] = new TH1F(Form(" Ybest %d", i-1)," Ybest ",50,-5.0,5.0);
-          StrHist.fYbest[i-1]->SetFillColor(513-i);
-          StrHist.fGrfit[i-1] = new TH1F(Form(" Grfit %d", i-1)," Grfit ",80,-2.0,2.0);
-          StrHist.fGrfit[i-1]->SetFillColor(512-i);
-          StrHist.fPhizxd[i-1] = new TH1F(Form(" Phizxd %d", i-1)," Phizxd ",80,-40.0,40.0);
-          StrHist.fPhizxd[i-1]->SetFillColor(511-i);
-          StrHist.fZxte[i-1] = new TH2F(Form(" Zxte %d", i-1)," Zxte ",100,0.0,50.0,90,0.0,30.0);
-          StrHist.fRest1[i-1] = new TH1F(Form(" Rest1 %d", i-1)," Rest1 ",100,-200.0,200.0);
-          StrHist.fRest1[i-1]->SetFillColor(510-i);
-          StrHist.fRest2[i-1] = new TH1F(Form(" Rest2 %d", i-1)," Rest2 ",100,-200.0,200.0);
-          StrHist.fRest2[i-1]->SetFillColor(509-i);
-          StrHist.fRest3[i-1] = new TH1F(Form(" Rest3 %d", i-1)," Rest3 ",80,-800.0,800.0);
-          StrHist.fRest3[i-1]->SetFillColor(508-i);
-          StrHist.fRest4[i-1] = new TH1F(Form(" Rest4 %d", i-1)," Rest4 ",80,-800.0,800.0);
-          StrHist.fRest4[i-1]->SetFillColor(507-i);
-          StrHist.fRest[i-1] = new TH1F(Form(" Rest %d", i-1)," Rest ",80,-800.0,800.0);
-          StrHist.fRest[i-1]->SetFillColor(506-i);
+       for(int i = 0; i < Nmax; i++) {
+          StrHist.fWire[i] = new TH1F(Form(" Wire %d", i)," Wire ",33,0.0,33.0);
+          StrHist.fWire[i]->SetFillColor(520-i+1);
+          StrHist.fLayer[i] = new TH1F(Form(" Layer %d", i)," Layer ",5,0.0,5.0);
+          StrHist.fLayer[i]->SetFillColor(519-i+1);
+          StrHist.fModule[i] = new TH1F(Form(" Module %d", i)," Module ",4,0.0,4.0);
+          StrHist.fModule[i]->SetFillColor(518-i+1);
+          StrHist.fdiff12[i] = new TH1F(Form(" diff12 %d", i)," diff12 ",120,-60.0,60.0);
+          StrHist.fdiff12[i]->SetFillColor(517-i+1);
+          StrHist.fdiff34[i] = new TH1F(Form(" diff34 %d", i)," diff34 ",120,-60.0,60.0);
+          StrHist.fdiff34[i]->SetFillColor(516-i+1);
+          StrHist.fDtimes[i] = new TH1F(Form(" Dtimes %d", i)," Dtimes ",100,0.0,100.0);
+          StrHist.fDtimes[i]->SetFillColor(515-i+1);
+          StrHist.fDdists[i] = new TH1F(Form(" Ddists %d", i)," Ddists ",120,0.0,0.3);
+          StrHist.fDdists[i]->SetFillColor(514-i+1);
+          StrHist.fTrkMod[i] = new TH1F(Form(" TrkMod %d", i)," TrkMod ",4,0.0,4.0);
+          StrHist.fTrkMod[i]->SetFillColor(504-i+1);
+          StrHist.fYbest[i] = new TH1F(Form(" Ybest %d", i)," Ybest ",50,-5.0,5.0);
+          StrHist.fYbest[i]->SetFillColor(513-i+1);
+          StrHist.fGrfit[i] = new TH1F(Form(" Grfit %d", i)," Grfit ",80,-2.0,2.0);
+          StrHist.fGrfit[i]->SetFillColor(512-i+1);
+          StrHist.fPhizxd[i] = new TH1F(Form(" Phizxd %d", i)," Phizxd ",80,-40.0,40.0);
+          StrHist.fPhizxd[i]->SetFillColor(511-i+1);
+          StrHist.fZxte[i] = new TH2F(Form(" Zxte %d", i)," Zxte ",100,0.0,50.0,90,0.0,30.0);
+          StrHist.fRest1[i] = new TH1F(Form(" Rest1 %d", i)," Rest1 ",100,-200.0,200.0);
+          StrHist.fRest1[i]->SetFillColor(510-i+1);
+          StrHist.fRest2[i] = new TH1F(Form(" Rest2 %d", i)," Rest2 ",100,-200.0,200.0);
+          StrHist.fRest2[i]->SetFillColor(509-i+1);
+          StrHist.fRest3[i] = new TH1F(Form(" Rest3 %d", i)," Rest3 ",80,-800.0,800.0);
+          StrHist.fRest3[i]->SetFillColor(508-i+1);
+          StrHist.fRest4[i] = new TH1F(Form(" Rest4 %d", i)," Rest4 ",80,-800.0,800.0);
+          StrHist.fRest4[i]->SetFillColor(507-i+1);
+          StrHist.fRest[i] = new TH1F(Form(" Rest %d", i)," Rest ",80,-800.0,800.0);
+          StrHist.fRest[i]->SetFillColor(506-i+1);
        }
 }
 // --------------------------------------------------------------------
@@ -909,24 +809,24 @@ void WriteStrHistograms(int page) {
 // ----------------------------------------------------------------
      if(page == 0) {
         TFile a("Straws.hist","recreate");
-        for(int i=1; i<=Nmax; i++) {
-          StrHist.fWire[i-1]->Write();
-          StrHist.fLayer[i-1]->Write();
-          StrHist.fModule[i-1]->Write();
-          StrHist.fdiff12[i-1]->Write();
-          StrHist.fdiff34[i-1]->Write();
-          StrHist.fDtimes[i-1]->Write();
-          StrHist.fDdists[i-1]->Write();
-          StrHist.fTrkMod[i-1]->Write();
-          StrHist.fYbest[i-1]->Write();
-          StrHist.fGrfit[i-1]->Write();
-          StrHist.fPhizxd[i-1]->Write();
-          StrHist.fZxte[i-1]->Write();
-          StrHist.fRest1[i-1]->Write();
-          StrHist.fRest2[i-1]->Write();
-          StrHist.fRest3[i-1]->Write();
-          StrHist.fRest4[i-1]->Write();
-          StrHist.fRest[i-1]->Write();
+        for(int i = 0; i < Nmax; i++) {
+          StrHist.fWire[i]->Write();
+          StrHist.fLayer[i]->Write();
+          StrHist.fModule[i]->Write();
+          StrHist.fdiff12[i]->Write();
+          StrHist.fdiff34[i]->Write();
+          StrHist.fDtimes[i]->Write();
+          StrHist.fDdists[i]->Write();
+          StrHist.fTrkMod[i]->Write();
+          StrHist.fYbest[i]->Write();
+          StrHist.fGrfit[i]->Write();
+          StrHist.fPhizxd[i]->Write();
+          StrHist.fZxte[i]->Write();
+          StrHist.fRest1[i]->Write();
+          StrHist.fRest2[i]->Write();
+          StrHist.fRest3[i]->Write();
+          StrHist.fRest4[i]->Write();
+          StrHist.fRest[i]->Write();
         }
      }
 }
@@ -1045,15 +945,15 @@ void PlotStrHistograms(int Ipage) {
 // -----------------------------------------------------------------------------
 void Vfill(float* Array, int Len , float Value) {
 // -----------------------------------------------------------------------------
-    for(int iloc=1; iloc<=Len; iloc++) {
-                                       Array[iloc-1] = Value;
+    for(int iloc = 0; iloc < Len; iloc++) {
+                                       Array[iloc] = Value;
     }
 }
 // -----------------------------------------------------------------------------
 void Vzero(float* Array, int Len) {
 // -----------------------------------------------------------------------------
-    for(int iloc=1; iloc<=Len; iloc++) {
-                                       Array[iloc-1] = 0.0;
+    for(int iloc = 0; iloc < Len; iloc++) {
+                                       Array[iloc] = 0.0;
     }
 }
 // -----------------------------------------------------------------------------
@@ -1113,9 +1013,9 @@ void straw_TimeDist_2(float Time,float &Dist) {
    }
 //
    int iloct = 0;
-   for(int it=1; it<=13; it++) {
-      if(Time >= TimeArray[it-1] && Time < TimeArray[it]) {
-                                                       iloct = it; 
+   for(int it = 0; it < 13; it++) {
+      if(Time >= TimeArray[it] && Time < TimeArray[it+1]) {
+                                                       iloct = it+1; 
       }
    }
 //
@@ -1153,9 +1053,9 @@ void straw_TimeDist_3(float Time,float &Dist) {
    }
 //
    int iloct = 0;
-   for(int it=1; it<=13; it++) {
-      if(Time >= TimeArray[it-1] && Time < TimeArray[it]) {
-                                                       iloct = it;
+   for(int it = 0; it < 13; it++) {
+      if(Time >= TimeArray[it] && Time < TimeArray[it+1]) {
+                                                       iloct = it+1;
       }
    }
 //
@@ -1177,10 +1077,10 @@ void straw_FillArray(int Nstraw, int Layer, int Nmod, float zpt, float xpt) {
 // ------------------------------------------------------------------
       Nposte++;
       if(Nposte < 5) {
-        Xypost[0][Nposte-1][Nmod-1] = zpt;
-        Xypost[1][Nposte-1][Nmod-1] = xpt;
-        Nspose[Nposte-1][Nmod-1]    = Nstraw;
-        Nlpose[Nposte-1][Nmod-1]    = Layer;
+        Xypost[0][Nposte-1][Nmod] = zpt;
+        Xypost[1][Nposte-1][Nmod] = xpt;
+        Nspose[Nposte-1][Nmod]    = Nstraw;
+        Nlpose[Nposte-1][Nmod]    = Layer;
 //      cout<<" straw_FillArray: "<<Nposte<<" "<<Nstraw<<" "<<Layer<<" "<<Nmod<<" "<<zpt<<" "<<xpt<<endl;
       }
 }
@@ -1212,8 +1112,8 @@ void straw_NearestTangent(float zz1,float xx1,float zz2,float xx2,int Nstraw,int
       int Iflag  = 0;
       float Thet = 0.0;
       straw_LocalAngle(Za,Xa,Zb,Xb,Nstraw,Layer,Nmod,Thet,Iflag);
-      float z3l = Hits[Nstraw-1][Layer-1][Nmod-1]*cos(Thet);
-      float x3l = Hits[Nstraw-1][Layer-1][Nmod-1]*sin(Thet);
+      float z3l = Hits[Nstraw][Layer-1][Nmod]*cos(Thet);
+      float x3l = Hits[Nstraw][Layer-1][Nmod]*sin(Thet);
 // ---------------------------------------------------------------
 // Convert space point back to GM2 coordinates:
 // ---------------------------------------------------------------
@@ -1224,8 +1124,8 @@ void straw_NearestTangent(float zz1,float xx1,float zz2,float xx2,int Nstraw,int
                      Sth = sin(The);
                      Cth = cos(The);
       }
-      Zpt = z3l*Sth + x3l*Cth + Xzaty[0][Nstraw-1][Layer-1][Nmod-1];
-      Xpt = x3l*Sth - z3l*Cth + Xzaty[1][Nstraw-1][Layer-1][Nmod-1];
+      Zpt = z3l*Sth + x3l*Cth + Xzaty[0][Nstraw][Layer-1][Nmod];
+      Xpt = x3l*Sth - z3l*Cth + Xzaty[1][Nstraw][Layer-1][Nmod];
 }
 // ------------------------------------------------------------------------------------------------------
 void straw_LocalAngle(float zz1,float xx1,float zz2,float xx2,int Nst,int Nlay,int Nmod,float &Angle, int &Iflag) {
@@ -1247,8 +1147,8 @@ void straw_LocalAngle(float zz1,float xx1,float zz2,float xx2,int Nst,int Nlay,i
       float Sth = sin(PI/4.0);//Sthpla;
       float Cth = cos(PI/4.0);//Cthpla;
 //
-      float z1l = (zz1 - Xzaty[0][Nst-1][Nlay-1][Nmod-1])*Sth - (xx1 - Xzaty[1][Nst-1][Nlay-1][Nmod-1])*Cth;
-      float x1l = (xx1 - Xzaty[1][Nst-1][Nlay-1][Nmod-1])*Sth + (zz1 - Xzaty[0][Nst-1][Nlay-1][Nmod-1])*Cth;
+      float z1l = (zz1 - Xzaty[0][Nst][Nlay-1][Nmod])*Sth - (xx1 - Xzaty[1][Nst][Nlay-1][Nmod])*Cth;
+      float x1l = (xx1 - Xzaty[1][Nst][Nlay-1][Nmod])*Sth + (zz1 - Xzaty[0][Nst][Nlay-1][Nmod])*Cth;
       float Dz  = (zz2 - zz1)*Sth - (xx2 - xx1)*Cth;
       float Dx  = (xx2 - xx1)*Sth + (zz2 - zz1)*Cth;
 // -----------------------------------------------------------------------------------------
@@ -1257,8 +1157,8 @@ void straw_LocalAngle(float zz1,float xx1,float zz2,float xx2,int Nst,int Nlay,i
             float The = 3 * PI / 8.0;//Thecol + (Piby2/4.0);
             Sth = sin(The);
             Cth = cos(The);
-            z1l = (zz1 - Xzaty[0][Nst-1][Nlay-1][Nmod-1])*Sth - (xx1 - Xzaty[1][Nst-1][Nlay-1][Nmod-1])*Cth;
-            x1l = (xx1 - Xzaty[1][Nst-1][Nlay-1][Nmod-1])*Sth + (zz1 - Xzaty[0][Nst-1][Nlay-1][Nmod-1])*Cth;
+            z1l = (zz1 - Xzaty[0][Nst][Nlay-1][Nmod])*Sth - (xx1 - Xzaty[1][Nst][Nlay-1][Nmod])*Cth;
+            x1l = (xx1 - Xzaty[1][Nst][Nlay-1][Nmod])*Sth + (zz1 - Xzaty[0][Nst][Nlay-1][Nmod])*Cth;
             Dz  = (zz2 - zz1)*Sth - (xx2 - xx1)*Cth;
             Dx  = (xx2 - xx1)*Sth + (zz2 - zz1)*Cth;
       }
@@ -1285,20 +1185,20 @@ void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Ic
 // Pick up drift distances
 // ----------------------------
       Iflag    = 0;
-      float d1 = Hits[Nst1-1][Layer1-1][Nmod-1];
-      float d2 = Hits[Nst2-1][Layer2-1][Nmod-1];
-      float Xyphys1  = Size[Layer1-1];
-      float Xyphys2  = Size[Layer2-1];
+      float d1 = Hits[Nst1][Layer1][Nmod];
+      float d2 = Hits[Nst2][Layer2][Nmod];
+      float Xyphys1  = Size[Layer1];
+      float Xyphys2  = Size[Layer2];
       if(d1 > Xyphys1) {
                        d1 = Xyphys1;
       }
       if(d2 > Xyphys2) {
                        d2 = Xyphys2;
       }
-      float Zcell1 = Xzaty[0][Nst1-1][Layer1-1][Nmod-1];
-      float Xcell1 = Xzaty[1][Nst1-1][Layer1-1][Nmod-1];
-      float Zcell2 = Xzaty[0][Nst2-1][Layer2-1][Nmod-1];
-      float Xcell2 = Xzaty[1][Nst2-1][Layer2-1][Nmod-1];
+      float Zcell1 = Xzaty[0][Nst1][Layer1][Nmod];
+      float Xcell1 = Xzaty[1][Nst1][Layer1][Nmod];
+      float Zcell2 = Xzaty[0][Nst2][Layer2][Nmod];
+      float Xcell2 = Xzaty[1][Nst2][Layer2][Nmod];
 // ------------------------------------
 // Distances between cell centres
 // ------------------------------------
@@ -1310,7 +1210,7 @@ void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Ic
       float Phi = 0.0;
       float Delta1 = 0.0;
       float Delta2 = 0.0;
-      if(Icand == 3) {
+      if(Icand == 2) {
 // -----------------
 // Crossed tangents
 // -----------------
@@ -1322,7 +1222,7 @@ void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Ic
         Delta1 = Alpha - Phi;
         Delta2 = Delta1 + Pibk;
       }
-      if(Icand == 4) {
+      if(Icand == 3) {
         if(fabs(d1+d2) > D) {
           Iflag = 1;
           return;
@@ -1331,7 +1231,7 @@ void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Ic
         Delta1 = Alpha + Phi;
         Delta2 = Delta1 + Pibk;
       }
-      if(Icand == 2) {
+      if(Icand == 1) {
 // ------------------------
 // 'outer edge' tangents
 // ------------------------
@@ -1343,7 +1243,7 @@ void straw_CommonTangent(int Nmod,int Nst1,int Layer1,int Nst2,int Layer2,int Ic
         Delta1 = Alpha + Phi + Pibk/2.0;
         Delta2 = Delta1;
       }
-      if(Icand == 1) {
+      if(Icand == 0) {
         if(fabs(d2-d1) > D) {
           Iflag = 1;
           return;
@@ -1375,10 +1275,10 @@ void Linfit(float* Xpts,float* Ypts,int Npts,float &Grad,float &Cint) {
       float Sumxy = 0.0;
       float Sumxx = 0.0;
       float Sumyy = 0.0;
-      for(int j=1; j<=Npts; j++) {
-         if(Ypts[j-1] != 0.0) {
-               Sumx  = Sumx + Xpts[j-1];
-               Sumy  = Sumy + Ypts[j-1];
+      for(int j = 0; j < Npts; j++) {
+         if(Ypts[j] != 0.0) {
+               Sumx  = Sumx + Xpts[j];
+               Sumy  = Sumy + Ypts[j];
                Count++;
          }
       }
@@ -1391,10 +1291,10 @@ void Linfit(float* Xpts,float* Ypts,int Npts,float &Grad,float &Cint) {
       float Ymed = Sumy/Count;
       float Xmed = Sumx/Count;
 //
-      for(int j=1; j<=Npts; j++) {
-         if(Ypts[j-1] != 0.0) {
-            float Scartx = Xpts[j-1] - Xmed;
-            float Scarty = Ypts[j-1] - Ymed;
+      for(int j = 0; j < Npts; j++) {
+         if(Ypts[j] != 0.0) {
+            float Scartx = Xpts[j] - Xmed;
+            float Scarty = Ypts[j] - Ymed;
             Sumxy  = Sumxy + Scartx*Scarty;
             Sumxx  = Sumxx + Scartx*Scartx;
             Sumyy  = Sumyy + Scarty*Scarty;
@@ -1508,11 +1408,11 @@ void Strcal() {
 //    Common /Strawp/Iexist(32,4),Pedest(32,4),T0data,Tofl,Yped
 //
       float Value = 0.0;
-      int Len = 32*4;
-      for(int imod=1; imod<=3; imod++) {
-         for(int ia=1; ia<=32; ia++) {
-            for(int ib=1; ib<=4; ib++) {
-               Pedest[ia-1][ib-1][imod-1] = Value;
+      int Len = STRAWS*LAYERS;
+      for(int imod = 0; imod < MODULES; imod++) {
+         for(int ilay = 0; ilay < LAYERS; ilay++) {
+            for(int istr = 0; istr < STRAWS; istr++) {
+               Pedest[istr][ilay][imod] = Value;
             }
          }
       }
@@ -1522,181 +1422,43 @@ void Strcal() {
       Tofl   = 0.0;
 }
 // --------------------------------------------------------------------
-void Strana(ofstream &trackeventsfile) {
+void straw_Analyse(ofstream &trackeventsfile) {
 // --------------------------------------------------------------------
 // Having obtained the drift times and hits now find the track.
 // --------------------------------------------------------------------
 // Start by assuming the wire positions for the middle of the cells:
 // This gets changed in any case in straw_FindTrack_4 etc.
 // ------------------------------------------------------------------
-      for(int imod=1; imod<=3; imod++) {
-         for(int ilay=1; ilay<=4; ilay++) {
-            for(int istr=1; istr<=32; istr++) {
-               Xzaty[0][istr-1][ilay-1][imod-1] = 0.0;
-               Xzaty[1][istr-1][ilay-1][imod-1] = 0.0;
-            }
-         }
-      }
-      for(int imod=1; imod<=3; imod++) {
-         for(int ilay=1; ilay<=4; ilay++) {
-            for(int istr=1; istr<=32; istr++) {
+      for(int imod = 0; imod < MODULES; imod++) {
+         for(int ilay = 0; ilay < LAYERS; ilay++) {
+            for(int istr = 0; istr < STRAWS; istr++) {
 // z coordinate:
-               //Xzaty[0][istr-1][ilay-1][imod-1] = Xzstraw[2][istr-1][ilay-1][imod-1];
-               Xzaty[0][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][0][2];
+               Xzaty[0][istr][ilay][imod] = strawGeom[imod][ilay][istr][0][2];
 // x coordinate half way up the straw:
-               //Xzaty[1][istr-1][ilay-1][imod-1] = Xzstraw[0][istr-1][ilay-1][imod-1] 
-               //                                 + Xzstraw[3][istr-1][ilay-1][imod-1];
-               Xzaty[1][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][0][0]
-						+ strawGeom[imod-1][ilay-1][istr-1][1][0];
+               Xzaty[1][istr][ilay][imod] = strawGeom[imod][ilay][istr][0][0]
+						+ strawGeom[imod][ilay][istr][1][0];
             }
          }
       }
 // ------------------------------------------------------------------
 // Now find 4-hit track elements in each of the Straw Modules:
 // ------------------------------------------------------------------
-      for(int imod=1; imod<=3; imod++) {
-         straw_FindTrack_4(imod, trackeventsfile);
+      int iStraws[LAYERS] = {0};
+      for(int imod = 0; imod < MODULES; imod++) {
+         straw_FindEvent(imod, trackeventsfile);
 // ------------------------------------------------------------------
 // Now look for 3-hit track elements.
 // ------------------------------------------------------------------
 //       straw_FindTrack_3(imod);
       }
 }
-// ------------------------------------------------------------------
-void straw_FindTrack_3(int Nmod) {
-// ------------------------------------------------------------------
-// Finds a 3-hit TE in a Straw Module.
-// It makes calls to Strte2 and Strte3 to deal with 3 hit cases.
-// ------------------------------------------------------------------
-// -----------------------------------------
-// Reset the number of TE points:
-// -----------------------------------------
-      Nposte = 0;
-//
-	int iStraws[LAYERS] = {0};
-      iStraws[0]  = 0;
-      iStraws[1]  = 0;
-      iStraws[2]  = 0;
-      iStraws[3]  = 0;
-      int Nhits = 0;
-      for(int istr=1; istr<=32; istr++) {
-         if(Hits[istr-1][0][Nmod-1] > 0.0) {
-                                   iStraws[0]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][1][Nmod-1] > 0.0) {
-                                   iStraws[1]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][2][Nmod-1] > 0.0) {
-                                   iStraws[2]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][3][Nmod-1] > 0.0) {
-                                   iStraws[3]  = istr;
-                                   Nhits++;
-         }
-      }
-      cout<<" straw_FindTrack_3: "<<Nmod<<" "<<iStraws[0]<<" "<<iStraws[1]<<" "<<iStraws[2]<<" "<<iStraws[3]<<endl;
-// ------------------------------------------------------------------
-// See if we can do anything with 3 hit cases.
-// ------------------------------------------------------------------
-      if(Nhits != 3) {
-                     return;
-      }
-      if(Nhits == 3) {
-        if(iStraws[0] > 0 && iStraws[1] > 0) {
-          if(iStraws[2] == 0 || iStraws[3] == 0) {
-            Strte2(Nmod,iStraws);
-            return;
-          }
-        }
-//
-        if(iStraws[2] > 0 && iStraws[3] > 0) {
-          if(iStraws[0] == 0 || iStraws[1] == 0) {
-            Strte3(Nmod,iStraws);
-            return;
-          }
-        }
-      }
-}
 // -------------------------------------------------------------------
-void xy2u(float xx , float yy , float &xu , float &yu) {
-// -------------------------------------------------------------------
-// Translate a point in the xy coordinate system into the u frame.
-// -------------------------------------------------------------------
-     float Pibk = 3.1415926535;
-     float Piby2 = Pibk/2.0;
+void coordConvert(int uvType, int direction, float xIn , float yIn , float &xOut , float &yOut) {
 // --------------------------------------------------------------------
-// Convert from global to local coordinates:
-// --------------------------------------------------------------------
-// Xwire Ywire Theta are the positions of the local frames origin and 
-// orientation as expressed in the global frame.
-// --------------------------------------------------------------------
-     float Xwire  = 0.0;
-     float Ywire  = 0.0;
-     float Thetad = 82.5;
-     float Theta  = Thetad * Pibk/180.0;
-     float Cth    = cos(Theta-Piby2);
-     float Sth    = sin(Theta-Piby2);
-// --------------------------------------------------------------
-// Translate into the local frame - in this case the u frame.
-// --------------------------------------------------------------
-     xu = ( xx - Xwire )*Cth + ( yy - Ywire )*Sth; 
-     yu = ( yy - Ywire )*Cth - ( xx - Xwire )*Sth;
-}
-// ---------------------------------------------------------------
-void xy2v(float xx , float yy , float &xv , float &yv) {
-// ---------------------------------------------------------------
-// Translate a point in the xy coordinate system into the v frame.
-// ---------------------------------------------------------------
-     float Pibk  = 3.1415926535;
-     float Piby2 = Pibk/2.0;
-// --------------------------------------------------------------------
-// Convert from global to local coordinates:
-// --------------------------------------------------------------------
-// Xwire Ywire Theta are the positions of the local frames origin and 
-// orientation as expressed in the global frame.
-// --------------------------------------------------------------------
-     float Xwire  = 0.0;
-     float Ywire  = 0.0;
-     float Thetad = 97.5;
-     float Theta  = Thetad * Pibk/180.0;
-     float Cth    = cos(Theta-Piby2);
-     float Sth    = sin(Theta-Piby2);
-// --------------------------------------------------------------
-// Translate into the local frame - in this case the v frame.
-// --------------------------------------------------------------
-     xv = ( xx - Xwire )*Cth + ( yy - Ywire )*Sth; 
-     yv = ( yy - Ywire )*Cth - ( xx - Xwire )*Sth;
-}
-// --------------------------------------------------------------------
-void u2xy(float xu , float yu , float &xx , float &yy) {
-// --------------------------------------------------------------------
-// Translate a point in the u coordinate system into the xy frame.
-// --------------------------------------------------------------------
-     float Pibk  = 3.1415926535;
-     float Piby2 = Pibk/2.0;
-// --------------------------------------------------------------------
-// Xwire Ywire Theta are the positions of the local frames origin and 
-// orientation as expressed in the global frame.
-// --------------------------------------------------------------------
-     float Xwire  = 0.0;
-     float Ywire  = 0.0;
-     float Thetad = 82.5;
-     float Theta  = Thetad * Pibk/180.0;
-     float Cth    = cos(Theta-Piby2);
-     float Sth    = sin(Theta-Piby2);
-// --------------------------------------------------------------
-// Now translate (Xlocal,Ylocal) into the global frame.
-// --------------------------------------------------------------
-     xx = xu*Cth - yu*Sth + Xwire;
-     yy = yu*Cth + xu*Sth + Ywire;
-}
-// -------------------------------------------------------------------
-void v2xy(float xv , float yv , float &xx , float &yy) {
-// --------------------------------------------------------------------
-// Translate a point in the u coordinate system into the xy frame.
+// Translate a point in the u OR v coordinate system into the xy frame,
+// or vice versa.
+// uvType = 0 (u) or 1 (v)
+// direction = 0 (u/v to xy) or 1 (xy to u/v)
 // --------------------------------------------------------------------
      float Pibk = 3.1415926535;
      float Piby2 = Pibk/2.0;
@@ -1706,17 +1468,33 @@ void v2xy(float xv , float yv , float &xx , float &yy) {
 // --------------------------------------------------------------------
      float Xwire  = 0.0;
      float Ywire  = 0.0;
-     float Thetad = 97.5;
+     float Thetad;
+     if (uvType == 0) { // u
+         Thetad = 82.5;
+     }
+     else { // v
+         Thetad = 97.5;
+     }
      float Theta  = Thetad * Pibk/180.0;
      float Cth    = cos(Theta-Piby2);
      float Sth    = sin(Theta-Piby2);
+     if (direction == 0) { // xIn, yIn are in u or v
+                           // xOut, yOut are in xy
 // --------------------------------------------------------------
 // Now translate (Xlocal,Ylocal) into the global frame.
 // --------------------------------------------------------------
-     xx = xv*Cth - yv*Sth + Xwire;
-     yy = yv*Cth + xv*Sth + Ywire;
+         xOut = xIn*Cth - yIn*Sth + Xwire;
+         yOut = yIn*Cth + xIn*Sth + Ywire;
+     }
+// --------------------------------------------------------------
+// Translate into the local (u or v) frame.
+// --------------------------------------------------------------
+     else { // xIn, yIn are in xy
+            // xOut, yOut are u or v
+         xOut = ( xIn - Xwire )*Cth + ( yIn - Ywire )*Sth; 
+         yOut = ( yIn - Ywire )*Cth - ( xIn - Xwire )*Sth;
+     }
 }
-// ----------------------------------------------------------------
 float randomFloat() {
 // ----------------------------------------------------------------
       IcallRndm++;
@@ -1811,17 +1589,6 @@ void zero_Init(int Imode) {
 // --------------------------------------------------------------------
      if(Imode == 1) {
                     Zpos = 0.0;
-                    for(int ia=1; ia<=6; ia++) {
-                       for(int ib=1; ib<=32; ib++) {
-                          for(int ic=1; ic<=4; ic++) {                             
-                              for(int id=1; id<=3; id++) {
-                                 //Xzstraw[ia-1][ib-1][ic-1][id-1] = 0.0;
-                                 //Xzstrau[ia-1][ib-1][ic-1][id-1] = 0.0;
-                                 //Xzstrav[ia-1][ib-1][ic-1][id-1] = 0.0;
-                              }
-                          }
-                       }
-                    }
 		for(int module = 0; module < MODULES; module++) {
 			for(int layer = 0; layer < LAYERS; layer++) {
 				for(int straw = 0; straw < STRAWS; straw++) {
@@ -1838,21 +1605,21 @@ void zero_Init(int Imode) {
 						
                     Diam    = 0.0;
                     Ylength = 0.0;
-                    for(int ia=1; ia<=32; ia++) {
-                       for(int ib=1; ib<=4; ib++) {
-                          for(int ic=1; ic<=3; ic++) {
-                             Iexist[ia-1][ib-1][ic-1] = 0;
-                             Pedest[ia-1][ib-1][ic-1] = 0.0;
+                    for(int ic = 0; ic < MODULES; ic++) {
+                        for(int ib = 0; ib < LAYERS; ib++) {
+                            for(int ia = 0; ia < STRAWS; ia++) {
+                             Iexist[ia][ib][ic] = 0;
+                             Pedest[ia][ib][ic] = 0.0;
                           }                      
                        }
                     }
                     T0data  = 0.0;
                     Tofl    = 0.0;
                     Yped    = 0.0;
-                    for(int ia=1; ia<=32; ia++) {
-                       for(int ib=1; ib<=4; ib++) {
-                          for(int ic=1; ic<=3; ic++) {
-                             Tof[ia-1][ib-1][ic-1] = 0.0;
+                    for(int ic = 0; ic < MODULES; ic++) {
+                        for(int ib = 0; ib < LAYERS; ib++) {
+                            for(int ia = 0; ia < STRAWS; ia++) {
+                             Tof[ia][ib][ic] = 0.0;
                           }
                        }
                     }
@@ -1860,49 +1627,42 @@ void zero_Init(int Imode) {
 // --------------------------------------------------------------------
 // Zero counters for new event:
 // --------------------------------------------------------------------
-     for(int ia=1; ia<=32; ia++) {
-         for(int ib=1; ib<=4; ib++) {
-            for(int ic=1; ic<=3; ic++) {
-               Rtimes[ia-1][ib-1][ic-1] = 0.0;
-               Dtimes[ia-1][ib-1][ic-1] = 0.0;
-               Hits[ia-1][ib-1][ic-1]   = 0.0;
-               Yhits[ia-1][ib-1][ic-1]  = 0.0;
-               Mask[ia-1][ib-1][ic-1]   = 0;
-               Zxhit[0][ia-1][ib-1][ic-1] = 0.0;
-               Zxhit[1][ia-1][ib-1][ic-1] = 0.0;
+   for(int imod = 0; imod < MODULES; imod++) {
+       for(int ilay = 0; ilay < LAYERS; ilay++) {
+           for(int istr = 0; istr < STRAWS; istr++) {
+               Rtimes[istr][ilay][imod] = 0.0;
+               Dtimes[istr][ilay][imod] = 0.0;
+               Hits[istr][ilay][imod]   = 0.0;
+               Yhits[istr][ilay][imod]  = 0.0;
+               Mask[istr][ilay][imod]   = 0;
+               Zxhit[0][istr][ilay][imod] = 0.0;
+               Zxhit[1][istr][ilay][imod] = 0.0;
             }
+            Xypost[0][imod][imod] = 0.0;
+            Xypost[1][imod][imod] = 0.0;
+            Nspose[imod][imod]    = 0;
+            Nlpose[imod][imod]    = 0;
          }
       }
 //
       Nposte = 0;
-      for(int ic=1; ic<=4; ic++) {
-         for(int imod=1; imod<=3; imod++) {
-            Xypost[0][ic-1][imod-1] = 0.0;
-            Xypost[1][ic-1][imod-1] = 0.0;
-            Nspose[ic-1][imod-1]    = 0;
-            Nlpose[ic-1][imod-1]    = 0;
-         }
-      }
-      for(int imod=1; imod<=3; imod++) {
-         for(int id=1; id<=60; id++) {
-            Trkinf[id-1][imod-1] = 0.0;
-            Trkin2[id-1][imod-1] = 0.0;
-            Trkin3[id-1][imod-1] = 0.0;
+      for(int imod = 0; imod < MODULES; imod++) {
+         for(int id = 0; id < 60; id++) {
+            Trkinf[id][imod] = 0.0;
+            Trkin2[id][imod] = 0.0;
+            Trkin3[id][imod] = 0.0;
          }
       } 
 }
 // --------------------------------------------------------------------
 void geom_Init() {
 // --------------------------------------------------------------------
-
-//int geom_init(float strawGeom[MODULES][LAYERS][STRAWS][2][3], float XZrel[MODULES][LAYERS][STRAWS][2][2], float *diam, float diagram_centre[2], float *stereodiff) {
-//	float *diam;
-//	*diam = 0.5;
-	/* May actually still need this bit */
-	//Thecol = PI/4.0;
-	//Sthpla = sin(Thecol);
-	//Cthpla = cos(Thecol);
-
+     float xx = 0.0;
+     float yy = 0.0;
+     float xu = 0.0;
+     float yu = 0.0;
+     float xv = 0.0;
+     float yv = 0.0;
 
 
 	float theta = 7.5*PI/180;
@@ -1912,19 +1672,15 @@ void geom_Init() {
 	straw.Ytop = 4.55;
 	float Zpos = 10.0;
 	float Zmoddiff = 13.0;
-	float layeroffsets_Z[4] = {3.931, 4.408, 6.091, 6.568};
-	float layeroffsets_X[4] = {4.7984, 4.7984 + wdist/2, 6.378, 6.378 - wdist/2};
+	float layeroffsets_Z[LAYERS] = {3.931, 4.408, 6.091, 6.568};
+	float layeroffsets_X[LAYERS] = {4.7984, 4.7984 + wdist/2, 6.378, 6.378 - wdist/2};
 	float stereodiff;
 	stereodiff = 9.1 * tan(theta);
      Diam     = 0.5;
-     for(int Ilay=1; Ilay<=4; Ilay++) {
-        Size[Ilay-1] = Diam / 2.0;
+     for(int ilay = 0; ilay < LAYERS; ilay++) {
+        Size[ilay] = Diam / 2.0;
      }
 
-	//float Xmid = Xoff1 + layeroffsets_X[1] + 16 * wdist;
-	//float Zmid = Zpos + Zmoddiff * 1 + layeroffsets_Z[1];
-	//diagram_centre[0] = Zmid;
-	//diagram_centre[1] = Xmid;
 	/* NOTE: in GM2 coordinates, "Z" is along beam line,
 	 * which is drawn HORIZONTALLY here!
 	 * Likewise, "X" is orthogonal, and is drawn vertically
@@ -1934,89 +1690,54 @@ void geom_Init() {
 	 * coordinates and lowercase (x, y) for program
 	 * coordinates.
 	 */
-	//printf("mid: %f,    %f\n", Xmid, Zmid);
 
-	for (int imodule = 0; imodule < 3; imodule ++) {
-		for (int ilayer = 0; ilayer < 4; ilayer ++) {
-			for (int istraw = 0; istraw < 32; istraw++) {
+	for (int imod = 0; imod < MODULES; imod ++) {
+		for (int ilay = 0; ilay < LAYERS; ilay ++) {
+			for (int istr = 0; istr < STRAWS; istr++) {
 
 				/*	X	*/
 
-				strawGeom[imodule][ilayer][istraw][0][0] = Xoff1  + layeroffsets_X[ilayer] + istraw * wdist;
-				if (ilayer == 0 || ilayer == 1)
-					strawGeom[imodule][ilayer][istraw][1][0] = Xoff1  + layeroffsets_X[ilayer] + istraw * wdist + stereodiff;
+				strawGeom[imod][ilay][istr][0][0] = Xoff1  + layeroffsets_X[ilay] + istr * wdist;
+				if (ilay == 0 || ilay == 1)
+					strawGeom[imod][ilay][istr][1][0] = Xoff1  + layeroffsets_X[ilay] + istr * wdist + stereodiff;
 				else
-					strawGeom[imodule][ilayer][istraw][1][0] = Xoff1  + layeroffsets_X[ilayer] + istraw * wdist - stereodiff;
+					strawGeom[imod][ilay][istr][1][0] = Xoff1  + layeroffsets_X[ilay] + istr * wdist - stereodiff;
 
-				//XZrel[imodule][ilayer][istraw][0][0] = strawGeom[imodule][ilayer][istraw][0][0] - Xmid;
-				//XZrel[imodule][ilayer][istraw][1][0] = strawGeom[imodule][ilayer][istraw][1][0] - Xmid;
 				/*	Y	*/
 				
-				strawGeom[imodule][ilayer][istraw][0][1] = straw.Ybot;
-				strawGeom[imodule][ilayer][istraw][1][1] = straw.Ytop;
+				strawGeom[imod][ilay][istr][0][1] = straw.Ybot;
+				strawGeom[imod][ilay][istr][1][1] = straw.Ytop;
 				
 				/*	Z	*/
 				
-				strawGeom[imodule][ilayer][istraw][0][2] = Zpos + Zmoddiff * imodule + layeroffsets_Z[ilayer];
-				strawGeom[imodule][ilayer][istraw][1][2] = Zpos + Zmoddiff * imodule + layeroffsets_Z[ilayer];
+				strawGeom[imod][ilay][istr][0][2] = Zpos + Zmoddiff * imod + layeroffsets_Z[ilay];
+				strawGeom[imod][ilay][istr][1][2] = Zpos + Zmoddiff * imod + layeroffsets_Z[ilay];
 
-				//XZrel[imodule][ilayer][istraw][0][1] = strawGeom[imodule][ilayer][istraw][0][2] - Zmid;
-				//XZrel[imodule][ilayer][istraw][1][1] = strawGeom[imodule][ilayer][istraw][1][2] - Zmid;
-			}
-		}
-	}
 // ---------------------------------------------------------------------
 // Now calculate positions of the wire strawEnds.in the u and v frames.
 // Z positions are the same in all frames:
 // ----------------------------------------------------------------------
-     for(int imod=1; imod<=3; imod++) {
-     for(int ilay=1; ilay<=4; ilay++) {
-        for(int istr=1; istr<=32; istr++) {
-           //Xzstrau[2][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][0][2];
-           //Xzstrau[5][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][1][2];
-           //Xzstrav[2][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][0][2];
-           //Xzstrav[5][istr-1][ilay-1][imod-1] = strawGeom[imod-1][ilay-1][istr-1][1][2];
-           strawGeom_u[imod-1][ilay-1][istr-1][0][2] = strawGeom[imod-1][ilay-1][istr-1][0][2];
-           strawGeom_u[imod-1][ilay-1][istr-1][1][2] = strawGeom[imod-1][ilay-1][istr-1][1][2];
-           strawGeom_v[imod-1][ilay-1][istr-1][0][2] = strawGeom[imod-1][ilay-1][istr-1][0][2];
-           strawGeom_v[imod-1][ilay-1][istr-1][1][2] = strawGeom[imod-1][ilay-1][istr-1][1][2];
-        }
-     }
-     }
+               strawGeom_u[imod][ilay][istr][0][2] = strawGeom[imod][ilay][istr][0][2];
+               strawGeom_u[imod][ilay][istr][1][2] = strawGeom[imod][ilay][istr][1][2];
+               strawGeom_v[imod][ilay][istr][0][2] = strawGeom[imod][ilay][istr][0][2];
+               strawGeom_v[imod][ilay][istr][1][2] = strawGeom[imod][ilay][istr][1][2];
 // ----------------------------------------------------------------------
-     float xx = 0.0;
-     float yy = 0.0;
-     float xu = 0.0;
-     float yu = 0.0;
-     float xv = 0.0;
-     float yv = 0.0;
-     for(int imod=1; imod<=3; imod++) {
-     for(int ilay=1; ilay<=4; ilay++) {
-        for(int istr=1; istr<=32; istr++) {
-            for(int bottop = 0; bottop < 2; bottop++) {	
-       // Straw in u frame:  
-                  xx = strawGeom[imod-1][ilay-1][istr-1][bottop][0];
-                  yy = strawGeom[imod-1][ilay-1][istr-1][bottop][1];
-                  xy2u(xx,yy,xu,yu);
-                  strawGeom_u[imod-1][ilay-1][istr-1][bottop][0] = xu;
-                  strawGeom_u[imod-1][ilay-1][istr-1][bottop][1] = yu;
-                  //Xzstrau[0][istr-1][ilay-1][0] = xu;
-                  //Xzstrau[1][istr-1][ilay-1][0] = yu;
-       // Straw in v frame:  
-                  xx = strawGeom[imod-1][ilay-1][istr-1][bottop][0];
-                  yy = strawGeom[imod-1][ilay-1][istr-1][bottop][1];
-                  xy2v(xx,yy,xv,yv);
-                  strawGeom_v[imod-1][ilay-1][istr-1][bottop][0] = xv;
-                  strawGeom_v[imod-1][ilay-1][istr-1][bottop][1] = yv;
-                  //Xzstrau[0][istr-1][ilay-1][0] = xv;
-                  //Xzstrau[1][istr-1][ilay-1][0] = yv;
-		//printf("%f", strawGeom[imod-1][ilay-1][istr-1][bottop][0]);
-		//printf("%f", strawGeom[imod-1][ilay-1][istr-1][bottop][1]);
-		//printf("%f", strawGeom[imod-1][ilay-1][istr-1][bottop][2]);
-	    }
-		//printf("\n");
-        }
-     }
+                for(int bottop = 0; bottop < 2; bottop++) {	
+           // Straw in u frame:  
+                      xx = strawGeom[imod][ilay][istr][bottop][0];
+                      yy = strawGeom[imod][ilay][istr][bottop][1];
+                      coordConvert(0, TO_UV, xx,yy,xu,yu);
+                      strawGeom_u[imod][ilay][istr][bottop][0] = xu;
+                      strawGeom_u[imod][ilay][istr][bottop][1] = yu;
+           // Straw in v frame:  
+                      xx = strawGeom[imod][ilay][istr][bottop][0];
+                      yy = strawGeom[imod][ilay][istr][bottop][1];
+                      coordConvert(1, TO_UV, xx,yy,xv,yv);
+                      strawGeom_v[imod][ilay][istr][bottop][0] = xv;
+                      strawGeom_v[imod][ilay][istr][bottop][1] = yv;
+                }
+            }
+         }
      }
  
 // ----------------------------------------------------------
@@ -2026,257 +1747,12 @@ void geom_Init() {
 }			
 
 // --------------------------------------------------------------------
-void geom_init() {
-// --------------------------------------------------------------------
-     float Xzstrau[6][32][4][3];
-     float Xzstrav[6][32][4][3];
-     float Pibk   = 3.1415926535;
-     float Twopi  = 2.0*Pibk;
-     float Piby2  = Pibk/2.0;
-//
-     Thecol = Piby2/2.0;
-     Sthpla = sin(Thecol);
-     Cthpla = cos(Thecol);
-//
-     Diam     = 0.5;
-     Ylength  = 10.0;
-     float Thet = 7.5*Pibk/180.0;
-     float Tanthe   = tan(Thet);   
-     float costhe   = cos(Thet);
-     float Wdist    = 0.6/costhe;
-     float Whalf    = Wdist/2.0;
-     for(int Ilay=1; Ilay<=4; Ilay++) {
-        Size[Ilay-1] = Diam / 2.0;
-     }
-// -------------------------------------------------------------------
-// Now set the Z coordinate of each individual layer...
-// goes from Z1 to Z4 for the 4 layers in the module.
-// -------------------------------------------------------------------
-     float Zpos  = 10.0;
-     float Zoff1 = 13.0;
-     float Zoff2 = 26.0;
-     float Z1  = Zpos + 3.931;
-     float Z2  = Zpos + 4.408;
-     float Z3  = Zpos + 6.091;
-     float Z4  = Zpos + 6.568;
-     float Z5  = Zpos + Zoff1 + 3.931;
-     float Z6  = Zpos + Zoff1 + 4.408;
-     float Z7  = Zpos + Zoff1 + 6.091;
-     float Z8  = Zpos + Zoff1 + 6.568;
-     float Z9  = Zpos + Zoff2 + 3.931;
-     float Z10 = Zpos + Zoff2 + 4.408;
-     float Z11 = Zpos + Zoff2 + 6.091;
-     float Z12 = Zpos + Zoff2 + 6.568;
-// --------------------------------------------------------------------
-// Allow for the module to be offset in x:
-// --------------------------------------------------------------------
-     float Xoff1 =  0.0;
-// ----------------------------------------------------------------------
-     for(int ia=1; ia<=6; ia++) {
-        for(int ib=1; ib<=32; ib++) {
-           for(int ic=1; ic<=4; ic++) {
-              for(int im=1; im<=3; im++) {
-                 Xzstraw[ia-1][ib-1][ic-1][im-1] = 0.0;
-              }
-           }
-        }
-     }  
-     straw.Ybot   = -4.55;
-     straw.Ytop   =  4.55;
-// ----------------------------------------------------------------------
-// First Module:
-// ----------------------------------------------------------------------
-     for(int istraw=1;istraw<=32; istraw++) {
-        Xzstraw[2][istraw-1][0][0] = Z1;
-        Xzstraw[5][istraw-1][0][0] = Z1;
-        Xzstraw[2][istraw-1][1][0] = Z2;
-        Xzstraw[5][istraw-1][1][0] = Z2;
-        Xzstraw[2][istraw-1][2][0] = Z3;
-        Xzstraw[5][istraw-1][2][0] = Z3;
-        Xzstraw[2][istraw-1][3][0] = Z4;
-        Xzstraw[5][istraw-1][3][0] = Z4;
-//
-        Xzstraw[2][istraw-1][0][1] = Z5;
-        Xzstraw[5][istraw-1][0][1] = Z5;
-        Xzstraw[2][istraw-1][1][1] = Z6;
-        Xzstraw[5][istraw-1][1][1] = Z6;
-        Xzstraw[2][istraw-1][2][1] = Z7;
-        Xzstraw[5][istraw-1][2][1] = Z7;
-        Xzstraw[2][istraw-1][3][1] = Z8;
-        Xzstraw[5][istraw-1][3][1] = Z8;
-//
-        Xzstraw[2][istraw-1][0][2] = Z9;
-        Xzstraw[5][istraw-1][0][2] = Z9;
-        Xzstraw[2][istraw-1][1][2] = Z10;
-        Xzstraw[5][istraw-1][1][2] = Z10;
-        Xzstraw[2][istraw-1][2][2] = Z11;
-        Xzstraw[5][istraw-1][2][2] = Z11;
-        Xzstraw[2][istraw-1][3][2] = Z12;
-        Xzstraw[5][istraw-1][3][2] = Z12;
-// Layer 1 - Bottom.
-        Xzstraw[0][istraw-1][0][0] = Xoff1 + 4.7984 + float(istraw-1)*Wdist;  
-        Xzstraw[1][istraw-1][0][0] = straw.Ybot;   
-        Xzstraw[0][istraw-1][0][1] = Xoff1 + 4.7984 + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][0][1] = straw.Ybot;
-        Xzstraw[0][istraw-1][0][2] = Xoff1 + 4.7984 + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][0][2] = straw.Ybot;
-// Layer 1 - Top
-        Xzstraw[3][istraw-1][0][0] = Xzstraw[0][istraw-1][0][0] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][0][0] = straw.Ytop;
-        Xzstraw[3][istraw-1][0][1] = Xzstraw[0][istraw-1][0][1] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][0][1] = straw.Ytop;
-        Xzstraw[3][istraw-1][0][2] = Xzstraw[0][istraw-1][0][2] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][0][2] = straw.Ytop;
-// Layer 2 - Bottom
-        Xzstraw[0][istraw-1][1][0] = Xoff1 + 4.7984 + Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][1][0] = straw.Ybot;
-        Xzstraw[0][istraw-1][1][1] = Xoff1 + 4.7984 + Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][1][1] = straw.Ybot;
-        Xzstraw[0][istraw-1][1][2] = Xoff1 + 4.7984 + Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][1][2] = straw.Ybot;
-// Layer 2 - Top
-        Xzstraw[3][istraw-1][1][0] = Xzstraw[0][istraw-1][1][0] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][1][0] = straw.Ytop;
-        Xzstraw[3][istraw-1][1][1] = Xzstraw[0][istraw-1][1][1] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][1][1] = straw.Ytop;
-        Xzstraw[3][istraw-1][1][2] = Xzstraw[0][istraw-1][1][2] + 9.1*Tanthe;
-        Xzstraw[4][istraw-1][1][2] = straw.Ytop;
-// Layer 3 - Bottom
-        Xzstraw[0][istraw-1][2][0] = Xoff1 + 6.378 + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][2][0] = straw.Ybot;
-        Xzstraw[0][istraw-1][2][1] = Xoff1 + 6.378 + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][2][1] = straw.Ybot;
-        Xzstraw[0][istraw-1][2][2] = Xoff1 + 6.378 + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][2][2] = straw.Ybot;
-// Layer 3 - Top
-        Xzstraw[3][istraw-1][2][0] = Xzstraw[0][istraw-1][2][0] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][2][0] = straw.Ytop;
-        Xzstraw[3][istraw-1][2][1] = Xzstraw[0][istraw-1][2][1] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][2][1] = straw.Ytop;
-        Xzstraw[3][istraw-1][2][2] = Xzstraw[0][istraw-1][2][2] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][2][2] = straw.Ytop;
-// Layer 4 - Bottom
-        Xzstraw[0][istraw-1][3][0] = Xoff1 + 6.378 - Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][3][0] = straw.Ybot;
-        Xzstraw[0][istraw-1][3][1] = Xoff1 + 6.378 - Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][3][1] = straw.Ybot;
-        Xzstraw[0][istraw-1][3][2] = Xoff1 + 6.378 - Whalf + float(istraw-1)*Wdist;
-        Xzstraw[1][istraw-1][3][2] = straw.Ybot;
-// Layer 4 - Top
-        Xzstraw[3][istraw-1][3][0] = Xzstraw[0][istraw-1][3][0] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][3][0] = straw.Ytop;
-        Xzstraw[3][istraw-1][3][1] = Xzstraw[0][istraw-1][3][1] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][3][1] = straw.Ytop;
-        Xzstraw[3][istraw-1][3][2] = Xzstraw[0][istraw-1][3][2] - 9.1*Tanthe;
-        Xzstraw[4][istraw-1][3][2] = straw.Ytop;
-     }
-// ---------------------------------------------------------------------
-// Now calculate positions of the wire strawEnds.in the u and v frames.
-// Z positions are the same in all frames:
-// ----------------------------------------------------------------------
-     for(int ilay=1; ilay<=4; ilay++) {
-        for(int istr=1; istr<=32; istr++) {
-           Xzstrau[2][istr-1][ilay-1][0] = Xzstraw[2][istr-1][ilay-1][0];
-           Xzstrau[5][istr-1][ilay-1][0] = Xzstraw[5][istr-1][ilay-1][0];
-           Xzstrav[2][istr-1][ilay-1][0] = Xzstraw[2][istr-1][ilay-1][0];
-           Xzstrav[5][istr-1][ilay-1][0] = Xzstraw[5][istr-1][ilay-1][0];
-           Xzstrau[2][istr-1][ilay-1][1] = Xzstraw[2][istr-1][ilay-1][1];
-           Xzstrau[5][istr-1][ilay-1][1] = Xzstraw[5][istr-1][ilay-1][1];
-           Xzstrav[2][istr-1][ilay-1][1] = Xzstraw[2][istr-1][ilay-1][1];
-           Xzstrav[5][istr-1][ilay-1][1] = Xzstraw[5][istr-1][ilay-1][1];
-           Xzstrau[2][istr-1][ilay-1][2] = Xzstraw[2][istr-1][ilay-1][2];
-           Xzstrau[5][istr-1][ilay-1][2] = Xzstraw[5][istr-1][ilay-1][2];
-           Xzstrav[2][istr-1][ilay-1][2] = Xzstraw[2][istr-1][ilay-1][2];
-           Xzstrav[5][istr-1][ilay-1][2] = Xzstraw[5][istr-1][ilay-1][2];
-        }
-     }
-// ----------------------------------------------------------------------
-     float xx = 0.0;
-     float yy = 0.0;
-     float xu = 0.0;
-     float yu = 0.0;
-     float xv = 0.0;
-     float yv = 0.0;
-     for(int ilay=1; ilay<=4; ilay++) {
-        for(int istr=1; istr<=32; istr++) {
-// Straw bottom in u frame:  
-           xx = Xzstraw[0][istr-1][ilay-1][0];
-           yy = Xzstraw[1][istr-1][ilay-1][0];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[0][istr-1][ilay-1][0] = xu;
-           Xzstrau[1][istr-1][ilay-1][0] = yu;
-           xx = Xzstraw[0][istr-1][ilay-1][1];
-           yy = Xzstraw[1][istr-1][ilay-1][1];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[0][istr-1][ilay-1][1] = xu;
-           Xzstrau[1][istr-1][ilay-1][1] = yu;
-           xx = Xzstraw[0][istr-1][ilay-1][2];
-           yy = Xzstraw[1][istr-1][ilay-1][2];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[0][istr-1][ilay-1][2] = xu;
-           Xzstrau[1][istr-1][ilay-1][2] = yu;
-// Straw top in u frame:
-           xx = Xzstraw[3][istr-1][ilay-1][0];
-           yy = Xzstraw[4][istr-1][ilay-1][0];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[3][istr-1][ilay-1][0] = xu;
-           Xzstrau[4][istr-1][ilay-1][0] = yu;
-           xx = Xzstraw[3][istr-1][ilay-1][1];
-           yy = Xzstraw[4][istr-1][ilay-1][1];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[3][istr-1][ilay-1][1] = xu;
-           Xzstrau[4][istr-1][ilay-1][1] = yu;
-           xx = Xzstraw[3][istr-1][ilay-1][2];
-           yy = Xzstraw[4][istr-1][ilay-1][2];
-           xy2u(xx,yy,xu,yu);
-           Xzstrau[3][istr-1][ilay-1][2] = xu;
-           Xzstrau[4][istr-1][ilay-1][2] = yu;
-// Straw bottom in v frame:
-           xx = Xzstraw[0][istr-1][ilay-1][0];
-           yy = Xzstraw[1][istr-1][ilay-1][0];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[0][istr-1][ilay-1][0] = xv;
-           Xzstrav[1][istr-1][ilay-1][0] = yv;
-           xx = Xzstraw[0][istr-1][ilay-1][1];
-           yy = Xzstraw[1][istr-1][ilay-1][1];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[0][istr-1][ilay-1][1] = xv;
-           Xzstrav[1][istr-1][ilay-1][1] = yv;
-           xx = Xzstraw[0][istr-1][ilay-1][2];
-           yy = Xzstraw[1][istr-1][ilay-1][2];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[0][istr-1][ilay-1][2] = xv;
-           Xzstrav[1][istr-1][ilay-1][2] = yv;
-// Straw top in v frame:
-           xx = Xzstraw[3][istr-1][ilay-1][0];
-           yy = Xzstraw[4][istr-1][ilay-1][0];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[3][istr-1][ilay-1][0] = xv;
-           Xzstrav[4][istr-1][ilay-1][0] = yv;
-           xx = Xzstraw[3][istr-1][ilay-1][1];
-           yy = Xzstraw[4][istr-1][ilay-1][1];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[3][istr-1][ilay-1][1] = xv;
-           Xzstrav[4][istr-1][ilay-1][1] = yv;
-           xx = Xzstraw[3][istr-1][ilay-1][2];
-           yy = Xzstraw[4][istr-1][ilay-1][2];
-           xy2v(xx,yy,xv,yv);
-           Xzstrav[3][istr-1][ilay-1][2] = xv;
-           Xzstrav[4][istr-1][ilay-1][2] = yv;
-        }
-     }
-// ----------------------------------------------------------
-// Now get all the calibration constants for the STRAWs.
-// ----------------------------------------------------------
-     Strcal();
-}
-// ----------------------------------------------------------
-void Strevt(int &Goodt0) {
+void straw_Evt(int &Goodt0) {
 // ----------------------------------------------------------
 // Starting from the Raw time values ... first subtract
 // pedestals and time of flight.
 // Then try to determine t0 for this event:
-// Strevt assumes a hit in each layer has already been
+// straw_Evt assumes a hit in each layer has already been
 // chosen.
 // Goodt0 = 1 if a reliable t0 is obtained.
 // ----------------------------------------------------------
@@ -2289,93 +1765,79 @@ void Strevt(int &Goodt0) {
       float is2[3];
       float is3[3];
       float is4[3];
+      int Nest   = 0;
+      float t0aver = 0.0;
 //
-      for(int imod=1; imod<=3; imod++) {
-         dt1[imod-1] = -999.0;
-         dt2[imod-1] = -999.0;
-         dt3[imod-1] = -999.0;
-         dt4[imod-1] = -999.0;
-         is1[imod-1] = -999;
-         is2[imod-1] = -999;
-         is3[imod-1] = -999;
-         is4[imod-1] = -999;
-      }
+      for(int imod = 0; imod < MODULES; imod++) {
+         dt1[imod] = -999.0;
+         dt2[imod] = -999.0;
+         dt3[imod] = -999.0;
+         dt4[imod] = -999.0;
+         is1[imod] = -999;
+         is2[imod] = -999;
+         is3[imod] = -999;
+         is4[imod] = -999;
       float Dvel   = 4.7/1000.0;
 // ----------------------------------------------------------
 // Once this routine has been called there should be at most
 // one hit in each layer - raw time values in Rtimes array.
 // ----------------------------------------------------------
-      for(int imod=1; imod<=3; imod++) {
-         for(int ilay=1; ilay<=4; ilay++) {
-            for(int istr=1; istr<=32; istr++) {
-               Tof[istr-1][ilay-1][imod-1] = Tofl;
-               if(Rtimes[istr-1][ilay-1][imod-1] > 0.0) {
-                 Dtimes[istr-1][ilay-1][imod-1] = Rtimes[istr-1][ilay-1][imod-1] - Pedest[istr-1][ilay-1][imod-1] - Tofl;
-                 if(Dtimes[istr-1][ilay-1][imod-1] <= 0.0) {
-                                                Dtimes[istr-1][ilay-1][imod-1] = 1.0;
+    	for (int ilay = 0; ilay < LAYERS; ilay ++) {
+		for (int istr = 0; istr < STRAWS; istr++) {
+               Tof[istr][ilay][imod] = Tofl;
+               if(Rtimes[istr][ilay][imod] > 0.0) {
+                 Dtimes[istr][ilay][imod] = Rtimes[istr][ilay][imod] - Pedest[istr][ilay][imod] - Tofl;
+                 if(Dtimes[istr][ilay][imod] <= 0.0) {
+                                                Dtimes[istr][ilay][imod] = 1.0;
                  }
                }
             }
          }
-      }
 // ------------------------------------------------------------------
 // Now try to determine the t0 for this event:
 // ------------------------------------------------------------------
       T0data = 0.0;
 //
-      for(int imod=1; imod<=3; imod++) {
-         for(int ist=1; ist<=32; ist++) {
-            if(Dtimes[ist-1][0][imod-1] > 0.0) {
-                 dt1[imod-1] = Dtimes[ist-1][0][imod-1];
-                 is1[imod-1] = ist;
+	 for (int istr = 0; istr < STRAWS; istr++) {
+            if(Dtimes[istr][0][imod] > 0.0) {
+                 dt1[imod] = Dtimes[istr][0][imod];
+                 is1[imod] = istr;
             }
-            if(Dtimes[ist-1][1][imod-1] > 0.0) {
-                 dt2[imod-1] = Dtimes[ist-1][1][imod-1];
-                 is2[imod-1] = ist;
+            if(Dtimes[istr][1][imod] > 0.0) {
+                 dt2[imod] = Dtimes[istr][1][imod];
+                 is2[imod] = istr;
             }
-            if(Dtimes[ist-1][2][imod-1] > 0.0) {
-                 dt3[imod-1] = Dtimes[ist-1][2][imod-1];
-                 is3[imod-1] = ist;
+            if(Dtimes[istr][2][imod] > 0.0) {
+                 dt3[imod] = Dtimes[istr][2][imod];
+                 is3[imod] = istr;
             }
-            if(Dtimes[ist-1][3][imod-1] > 0.0) {
-                 dt4[imod-1] = Dtimes[ist-1][3][imod-1];
-                 is4[imod-1] = ist;
+            if(Dtimes[istr][3][imod] > 0.0) {
+                 dt4[imod] = Dtimes[istr][3][imod];
+                 is4[imod] = istr;
             }
          }
-      }
 // ------------------------------------------------------------------
 // We now have the times in each of the 4 layers in each module.
 // Use them to obtain 2 estimates of t0:
 // Use the fact that we know the sum of the drift times in adjacent
 // layers.
 // ------------------------------------------------------------------
-      int Nest   = 0;
-      float t0aver = 0.0;
-      for(int imod=1; imod<=3; imod++) {
-         if(abs(is1[imod-1]-is2[imod-1]) < 2) {
-           if(dt1[imod-1] > 0.0 && dt2[imod-1] > 0.0) {
+         if(abs(is1[imod]-is2[imod]) < 2) {
+           if(dt1[imod] > 0.0 && dt2[imod] > 0.0) {
              Nest++;
-             t0est[Nest-1] = (dt1[imod-1] + dt2[imod-1] - 59.0)/2.0;
+             t0est[Nest-1] = (dt1[imod] + dt2[imod] - 59.0)/2.0;
              t0aver = t0aver + t0est[Nest-1];
            }
          }
-         if(abs(is3[imod-1]-is4[imod-1]) < 2) {
-           if(dt3[imod-1] > 0.0 && dt4[imod-1] > 0.0) {
+         if(abs(is3[imod]-is4[imod]) < 2) {
+           if(dt3[imod] > 0.0 && dt4[imod] > 0.0) {
              Nest++;
-             t0est[Nest-1] = (dt3[imod-1] + dt4[imod-1] - 59.0)/2.0;
+             t0est[Nest-1] = (dt3[imod] + dt4[imod] - 59.0)/2.0;
              t0aver = t0aver + t0est[Nest-1];
            }
          }
       }
-//
-//    cout<<" Strevt: No of T0 estimates: "<<Nest<<endl;
-//    for(int iest=1; iest<=Nest; iest++) {
-//       cout<<iest<<" "<<t0est[iest-1]<<endl;
-//    }
       float t0diff = t0est[0] - t0est[1];
-//    cout<<" Difference in 1st two estimates: "<<t0diff<<endl;
-//    int ibl4;
-//    cin>>ibl4;
       Goodt0 = 0;
       if(Nest == 2 && fabs(t0diff) < 5.0) {
                                           Goodt0 = 1;
@@ -2384,28 +1846,25 @@ void Strevt(int &Goodt0) {
                    t0aver = t0aver/float(Nest);
       }
       T0data = t0aver;
-//    cout<<" Estimated T0 is: "<<T0data<<endl;
 // ------------------------------------------------------------------
 // Subtract the obtained t0 from the drift times:
 // ------------------------------------------------------------------
-      for(int imod=1; imod<=3; imod++) {
-         for(int ilay=1; ilay<=4; ilay++) {
-            for(int istr=1; istr<=32; istr++) {
-               if(Dtimes[istr-1][ilay-1][imod-1] > 0.0) {
-                 Dtimes[istr-1][ilay-1][imod-1] = Dtimes[istr-1][ilay-1][imod-1] - T0data;
-                 Dtimes[istr-1][ilay-1][imod-1] = Dtimes[istr-1][ilay-1][imod-1] - 4.0;
-                 if(Dtimes[istr-1][ilay-1][imod-1] <= 0.0) {
-                         Dtimes[istr-1][ilay-1][imod-1] = 1.0;
+     for(int imod = 0; imod < MODULES; imod++) {
+    	for (int ilay = 0; ilay < LAYERS; ilay ++) {
+		for (int istr = 0; istr < STRAWS; istr++) {
+               if(Dtimes[istr][ilay][imod] > 0.0) {
+                 Dtimes[istr][ilay][imod] = Dtimes[istr][ilay][imod] - T0data;
+                 Dtimes[istr][ilay][imod] = Dtimes[istr][ilay][imod] - 4.0;
+                 if(Dtimes[istr][ilay][imod] <= 0.0) {
+                         Dtimes[istr][ilay][imod] = 1.0;
                  }
-                 float Time = Dtimes[istr-1][ilay-1][imod-1];
+                 float Time = Dtimes[istr][ilay][imod];
                  float Dist = 0.0;
                  straw_TimeDist_3(Time,Dist);
-//               float Dist = Time*Dvel;
                  if(Dist > 0.25) {
                               Dist = 0.25;
                  }
-                 Hits[istr-1][ilay-1][imod-1] = Dist;
-//               cout<<" Drift info: "<<istr<<" "<<ilay<<" "<<imod<<" "<<Time<<" "<<Dist<<endl;
+                 Hits[istr][ilay][imod] = Dist;
                }
             }
          }
@@ -2425,642 +1884,587 @@ void writeEvents() {
 //    
    ofstream pdffile(StrFile);
    pdffile<<T0data<<endl;   
-//
-//   int ilocf = 0;
-//   for(int ia=1; ia<=6; ia++) {
-//      float a1   = Trkinf[ilocf];
-//      float a2   = Trkinf[ilocf+1];
-//      float a3   = Trkinf[ilocf+2];
-//      float a4   = Trkinf[ilocf+3];
-//      float a5   = Trkinf[ilocf+4];
-//      float a6   = Trkinf[ilocf+5];
-//      float a7   = Trkinf[ilocf+6];
-//      float a8   = Trkinf[ilocf+7];
-//      float a9   = Trkinf[ilocf+8];
-//      float a10  = Trkinf[ilocf+9];
-//      pdffile<<a1<<" "<<a2<<" "<<a3<<" "<<a4<<" "<<a5<<" "<<a6<<" "<<a7<<" "<<a8<<" "<<a9<<" "<<a10<<endl;
-//      ilocf = ilocf + 10;
-//   }
-//
-//   int iloc2 = 0;
-//   for(int ib=1; ib<=6; ib++) {
-//      float b1   = Trkin2[iloc2];            
-//      float b2   = Trkin2[iloc2+1];          
-//      float b3   = Trkin2[iloc2+2];          
-//      float b4   = Trkin2[iloc2+3];          
-//      float b5   = Trkin2[iloc2+4];          
-//      float b6   = Trkin2[iloc2+5];          
-//      float b7   = Trkin2[iloc2+6];          
-//      float b8   = Trkin2[iloc2+7];          
-//      float b9   = Trkin2[iloc2+8];
-//      float b10  = Trkin2[iloc2+9];
-//      pdffile<<b1<<" "<<b2<<" "<<b3<<" "<<b4<<" "<<b5<<" "<<b6<<" "<<b7<<" "<<b8<<" "<<b9<<" "<<b10<<endl;
-//      iloc2 = iloc2 + 10;
-//   }  
-//
-//   int iloc3 = 0;
-//   for(int ic=1; ic<=6; ic++) {
-//      float c1   = Trkin3[iloc3];
-//      float c2   = Trkin3[iloc3+1];
-//      float c3   = Trkin3[iloc3+2];
-//      float c4   = Trkin3[iloc3+3];
-//      float c5   = Trkin3[iloc3+4];
-//      float c6   = Trkin3[iloc3+5];
-//      float c7   = Trkin3[iloc3+6];
-//      float c8   = Trkin3[iloc3+7];
-//      float c9   = Trkin3[iloc3+8];
-//      float c10  = Trkin3[iloc3+9];
-//      pdffile<<c1<<" "<<c2<<" "<<c3<<" "<<c4<<" "<<c5<<" "<<c6<<" "<<c7<<" "<<c8<<" "<<c9<<" "<<c10<<endl;
-//      iloc3 = iloc3 + 10;
-//   }  
-//
-//      int Ntot = 0;
-//      for(int istr=1; istr<=32; istr++) {
-//         for(int ilay=1; ilay<=4; ilay++) {
-//            if(Hits[istr-1][ilay-1] > 0.0) {
-//                                           Ntot = Ntot + 1;
-//            }
-//         }
-//      }
-//      pdffile<<Ntot<<endl;
-//
-//      for(int istr=1; istr<=32; istr++) {
-//         for(int ilay=1; ilay<=4; ilay++) {
-//            if(Hits[istr-1][ilay-1] > 0.0) {
-//              float aa1 = Hits[istr-1][ilay-1];
-//              float aa2 = Dtimes[istr-1][ilay-1];
-//              float aa3 = Rtimes[istr-1][ilay-1];
-//              float aa4 = Yhits(Istraw,Ilay,Icol)
-//              iaa = Mask(Istraw,Ilay,Icol)
-//        aa4 = Zxhit(1,Istraw,Ilay,Icol)
-//        aa5 = Zxhit(2,Istraw,Ilay,Icol)
-//        aa6 = Xzaty(1,Istraw,Ilay,Icol)
-//        aa7 = Xzaty(2,Istraw,Ilay,Icol)
-//        bb1 = Hitsmc(Istraw,Ilay,Icol)
-//        bb2 = Dtimmc(Istraw,Ilay,Icol)
-//        bb3 = Yhitmc(Istraw,Ilay,Icol)
-//        bb4 = Zxhmc(1,Istraw,Ilay,Icol)
-//        bb5 = Zxhmc(2,Istraw,Ilay,Icol)
-//        Write(26,1004) Istraw,Ilay,Icol,iaa,aa1,aa2,aa3,aa4,aa5, 
-//     +                 aa6,aa7
-//        Write(26,1005) bb1,bb2,bb3,bb4,bb5
-//        If(Icall .eq. 1) Then
-//          Write(61,*) ' Reco Hit in ',Istraw,Ilay,Icol
-//          Write(61,*)
-//     +    Dtimes(Istraw,Ilay,Icol),Hits(Istraw,Ilay,Icol)
-//          Write(61,*)
-//     +    Yhits(Istraw,Ilay,Icol),T0data
-//          Write(61,*)
-//     +    Zxhit(1,Istraw,Ilay,Icol),Zxhit(2,Istraw,Ilay,Icol)
-//        Endif
-//      Endif
-//   22 Continue
-//   21 Continue
 }
+// -----------------------------------------------------------------
+void straw_FindEvent(int Nmod, ofstream &trackeventsfile) {
 // ------------------------------------------------------------------
-void straw_FindTrack_4(int Nmod, ofstream &trackeventsfile) {
+// Finds a TE in a Straw Module where hits exist either in all
+// four layers, or all but one (if allow_3Hit is enabled). 
+// The TE is created if the position of the track in the layer 
+// without a hit is compatible with having gone through the cell 
+// wall.
 // ------------------------------------------------------------------
-// Finds a 4-hit TE in a Straw module.
-// This routine deals with modules with 4 hits on a track.
-// ------------------------------------------------------------------
+      int exclude = 0;
+      int inc[LAYERS] = {0};
+      int side = 0;
+
       float Xptsfit[4];
       float Zptsfit[4];
+//
       float Zw[4];
       float Xw[4];
       float Dr[4];
-      float Resols[4000];
-      int   Nused[4000];
-      int   Isols[4000];
 //
       float Pibk  = 3.1415926535;
       float Twopi = 2.0*Pibk;
       float Piby2 = Pibk/2.0;
-// ------------------------------
-// Size of vertical stepping bin:
-// ------------------------------
       float Ysize = 0.01;
-// ------------------------------
-// Total number of vertical steps
-// ------------------------------
       float Ystep = 10.0/Ysize;
-// ------------------------------------------
-// Size of array needed to store information:
-// ------------------------------------------
       float Yloop = 4.0 * Ystep;
-      int Kystep = round(Ystep);
-      int Kyloop = round(Yloop);
+      int   Kystep = round(Ystep);
+      int   Kyloop = round(Yloop);
+      float Resols[Kyloop];
+      float Angloc[Kyloop];
+      int   IsWall[Kyloop];
 //
-      for(int i=1; i<=Kyloop; i++) {
-         Resols[i-1] = 99999999.0;
-         Nused[i-1]  = 0;
-         Isols[i-1]  = 0;
+      for(int i=0; i < Kyloop; i++) {
+         Resols[i] = 99999999.0;
+         Angloc[i] = 99999999.0;
+         IsWall[i] = 0;
       }
 // -----------------------------------------
 // Reset the number of TE points:
 // -----------------------------------------
-      Nposte = 0;
+//       Nposte = 0;
+//
 // ------------------------------------------------------------------
 // Declare some variables for later use.
 // ------------------------------------------------------------------
-      float xx1, xx2, xx3, xx4;
-      float zz1, zz2, zz3, zz4;
-      float yy1, yy2, yy3, yy4;
-      float xu1, xu2, xu3, xu4;
-      float zu1, zu2, zu3, zu4;
-      float yu1, yu2, yu3, yu4;
+      straw.Xbot = 0.0;
+      straw.Ybot = 0.0;
+      straw.Zbot = 0.0;
+      straw.Xtop = 0.0;
+      straw.Ytop = 0.0;
+      straw.Ztop = 0.0;
+
+	float coords[3][3][LAYERS] = {0};
+//		     ^  ^  ^
+//	x/y/z--------|  |  |----Layer (1/2/3/4)
+//			|---Reference frame (u/v/Normal)
 //
-      float Gradu, Cintu, Gradv, Cintv;
-      float xv1, xv2, xv3, xv4;
-      float zv1, zv2, zv3, zv4;
-      float yv1, yv2, yv3, yv4;
+//	eg. what was yu3 is now coords[<y>][<u>][<2>] = coords[1][0][3]
+
+      float Grads[2]; // = {Gradu. Gradv}
+      float Cints[2]; // = {Cintu. Cintv}
+      float Angexp = 0.0;
+
 // ------------------------------------------------------------------
 // Find the hits in each of the layers:
 // ------------------------------------------------------------------
+
       int Layer1 = 1;
       int Layer2 = 2;
       int Layer3 = 3;
       int Layer4 = 4;
-	int iStraws[LAYERS];
-      iStraws[0] = 0;
-      iStraws[1] = 0;
-      iStraws[2] = 0;
-      iStraws[3] = 0;
+      int iStraws[LAYERS] = {0};
       int Nhits = 0;
-      for(int istr=1; istr<=32; istr++) {
-         if(Hits[istr-1][0][Nmod-1] > 0.0) {
-                                   iStraws[0]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][1][Nmod-1] > 0.0) {
-                                   iStraws[1]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][2][Nmod-1] > 0.0) {
-                                   iStraws[2]  = istr;
-                                   Nhits++;
-         }
-         if(Hits[istr-1][3][Nmod-1] > 0.0) {
-                                   iStraws[3]  = istr;
-                                   Nhits++;
-         }
+      for(int ilay=0; ilay< LAYERS; ilay++) {
+          for(int istr = 0; istr < STRAWS; istr++) {
+             if(Hits[istr][ilay][Nmod] > 0.0) {
+                                       iStraws[ilay]  = istr;
+                                       Nhits++;
+                                       inc[ilay] = 1;
+             }
+          }
       }
 // ------------------------------------------------------------------
 // If we dont have hits in all four layers then return.
 // ------------------------------------------------------------------
+ 
       if(Nhits != 4) {
-                     return;
-      }
-      if(iStraws[0] == 0 || iStraws[1] == 0) {
-                                 return;
-      }
-      if(iStraws[2] == 0 || iStraws[3] == 0) {
-                                 return;
+          if (Nhits == 3) {
+              exclude = 1;
+              int excluded;
+              for (int ilay = 0; ilay < LAYERS; ilay++) {
+                  if (inc[ilay] = 0) {
+                     excluded = ilay;
+                  }
+              }
+              side = excluded/2;
+              if (!allow_3Hit) {
+                  return;
+              }
+          }
+          else {
+              return;
+          }
       }
 // ------------------------------------------------------------------
 // In a module with 4 trackable hits: Make some basic plots.
 // ------------------------------------------------------------------
-      float diff12 = Rtimes[iStraws[0]-1][0][Nmod-1] - Rtimes[iStraws[1]-1][1][Nmod-1];
-      float diff34 = Rtimes[iStraws[2]-1][2][Nmod-1] - Rtimes[iStraws[3]-1][3][Nmod-1];
+ 
+      float diff12 = Rtimes[iStraws[0]][0][Nmod] - Rtimes[iStraws[1]][1][Nmod];
+      float diff34 = Rtimes[iStraws[2]][2][Nmod] - Rtimes[iStraws[3]][3][Nmod];
       StrHist.fdiff12[0]->Fill(diff12);
       StrHist.fdiff34[0]->Fill(diff34);
-      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[0]-1][0][Nmod-1]);
-      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[1]-1][1][Nmod-1]);
-      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[2]-1][2][Nmod-1]);
-      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[3]-1][3][Nmod-1]);
-      StrHist.fDdists[0]->Fill(Hits[iStraws[0]-1][0][Nmod-1]);
-      StrHist.fDdists[0]->Fill(Hits[iStraws[1]-1][1][Nmod-1]);
-      StrHist.fDdists[0]->Fill(Hits[iStraws[2]-1][2][Nmod-1]);
-      StrHist.fDdists[0]->Fill(Hits[iStraws[3]-1][3][Nmod-1]);
+      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[0]][0][Nmod]);
+      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[1]][1][Nmod]);
+      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[2]][2][Nmod]);
+      StrHist.fDtimes[0]->Fill(Dtimes[iStraws[3]][3][Nmod]);
+      StrHist.fDdists[0]->Fill(Hits[iStraws[0]][0][Nmod]);
+      StrHist.fDdists[0]->Fill(Hits[iStraws[1]][1][Nmod]);
+      StrHist.fDdists[0]->Fill(Hits[iStraws[2]][2][Nmod]);
+      StrHist.fDdists[0]->Fill(Hits[iStraws[3]][3][Nmod]);
+
 // ------------------------------------------------------------------
 // Do track finding at various positions vertically and minimise the
 // residuals:
 // ------------------------------------------------------------------
-      for (int Iybin=1; Iybin <= 910; Iybin++) {
-          float Ytest = float(Iybin)/100.0;
-          Ytest = Ytest - 4.55;
+      int Iybin_Max = 910; //Was 91 for 3 hit case
+      float Iybin_Div = 100.0; // Was 10.0 for 3 hit case
+      for(int Iybin=1; Iybin<=Iybin_Max; Iybin++) {
+         float Ytest = float(Iybin)/Iybin_Div;
+         Ytest = Ytest - 4.55;
 	getEndsLoop(Nmod, Ytest, NULL, 1);
 // ------------------------------------------------------------------
 // Have found the hit straws in layers 1 and 2.
 // Find the 4 possible tangents to these two drift circles.
 // Extrapolate to layers 3 and 4 ...
 // ------------------------------------------------------------------
-// In u frame:
-          Zw[0] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-          Xw[0] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-          Dr[0] = Hits[iStraws[0]-1][0][Nmod-1];
-	  straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-	  straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-          //straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-          //straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-          yu1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-//
-          Zw[1] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-          Xw[1] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-          Dr[1] = Hits[iStraws[1]-1][1][Nmod-1];
-	  straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-	  straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-          //straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-          //straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-          yu2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-// In v frame:
-          Zw[2] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-          Xw[2] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-          Dr[2] = Hits[iStraws[2]-1][2][Nmod-1];
-	  straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-	  straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-          //straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-          //straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-          yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-// 
-          Zw[3] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-          Xw[3] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-          Dr[3] = Hits[iStraws[3]-1][3][Nmod-1];
-	  straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-	  straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-          //straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-          //straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-          yv4   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-//
-          for(int itan=1; itan<=4; itan++) {
+ 
+        for (int i = 0; i < LAYERS; i++) {
+            if (inc[i]) {
+                Zw[i] = Xzaty[0][iStraws[i]][i][Nmod];
+                Xw[i] = Xzaty[1][iStraws[i]][i][Nmod];
+                Dr[i] = Hits[iStraws[i]][i][Nmod];
+                straw.Ybot = (*strawGeoms[i/2])[Nmod][i][iStraws[i]][0][1];
+                straw.Ytop = (*strawGeoms[i/2])[Nmod][i][iStraws[i]][1][1];
+                coords[1][i/2][i] = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
+            }
+        }
+         for(int itan = 0; itan < LAYERS; itan++) {
 // ------------------------------------------------------------------
 // Routine straw_CommonTangent returns the Z and X points of the common
 // tangents to the drift circles for each of the 4 cases in turn.
 // ------------------------------------------------------------------
 //   Itan = 1 MEANS OUTER EDGE TANGENT , RHS OF DRIFT CIRCLES
-//        = 2        ''    ''     ''     LHS  ''  ''     ''
-//        = 3       CROSSED TANGENT , BOTTOM RHS TO TOP LHS
-//        = 4           ''     ''       ''   LHS        RHS
+//       = 2        ''    ''     ''     LHS  ''  ''     ''
+//       = 3       CROSSED TANGENT , BOTTOM RHS TO TOP LHS
+//       = 4           ''     ''       ''   LHS        RHS
 // ------------------------------------------------------------------
-             zu1 = 0.0;
-             xu1 = 0.0;
-             zu2 = 0.0;
-             xu2 = 0.0;
-             int iflag = 0;
-             straw_CommonTangent(Nmod,iStraws[0],Layer1,iStraws[1],Layer2,itan,zu1,xu1,zu2,xu2,iflag);
-             int Irloc = (Iybin-1)*4 + itan;
-             Gradu = 9999.9;
-             int Icon = 1;
-             if(fabs(zu2-zu1) > 1.0e-6) {
-                                        Gradu =(xu2 - xu1)/(zu2 - zu1);
-                                        Icon = 1;
-             }
-             if(fabs(zu2-zu1) <= 1.0e-6) {
-                                         Resols[Irloc-1] = 99999.9;
-                                         Icon = 0;
-             }
-             if(Icon == 1) {
-               Cintu = xu1 - (Gradu * zu1);
+            int iflag = 0;
+            straw_CommonTangent(Nmod,iStraws[0],side,iStraws[1],side+1,itan,
+		coords[2][side][0],
+		coords[0][side][0],
+		coords[2][side][1],
+		coords[0][side][1],
+		iflag);
+            int Irloc = (Iybin-1)*4 + itan;
+            Grads[1-side] = 9999.9;
+            int Icon[4];
+            Icon[0] = 1;
+            if(fabs(coords[2][side][1] - coords[2][side][0]) > 1.0e-6) {
+                    Grads[side] = 
+                            (coords[0][side][1] - coords[0][side][0])/
+                            (coords[2][side][1] - coords[2][side][0]);
+                    for (int i = 0; i < 2; i++) {
+                        coordConvert(side, TO_XY,
+                             coords[0][side][i],
+                             coords[1][side][i],
+                             coords[0][2][i],
+                             coords[1][2][i]);
+                    }
+                    coords[2][2][1] = coords[2][side][1];
+                    coords[2][2][0] = coords[2][side][0];
+                    Angloc[Irloc] = phi_arctan((coords[0][2][1]-coords[0][2][0]),
+                                      (coords[2][2][1]-coords[2][2][0]));
+                    if(Angloc[Irloc] < 0.0) {
+                      Angloc[Irloc] = Angloc[Irloc] + Twopi;
+                    }
+                    Angloc[Irloc] = Angloc[Irloc]*180.0/Pibk;
+                    Icon[0] = 1;
+            }
+            else {
+                    Resols[Irloc] = 99999.9;
+                    Icon[0] = 0;
+            }
+
+            if(Icon[0] == 1) {
+              Cints[side] = coords[0][side][0] - (Grads[side] * coords[2][side][0]);
 // -------------------------------------------------------------------
 // Sanity check: Residuals in layers used to define the line should
 // be zero.
 // -------------------------------------------------------------------
-               float Zwire1u = Zw[0];
-               float Xwire1u = Xw[0];
-               float Zint1u  = 999.9;
-               float Xint1u  = 999.9;
-               straw_ClosestPoint(Gradu,Cintu,Zwire1u,Xwire1u,Zint1u,Xint1u);
-               float Zwire2u = Zw[1];
-               float Xwire2u = Xw[1];
-               float Zint2u  = 999.9;
-               float Xint2u  = 999.9;
-               straw_ClosestPoint(Gradu,Cintu,Zwire2u,Xwire2u,Zint2u,Xint2u);
-               float Zpt1u   = 999.9;
-               float Xpt1u   = 999.9;  
-               straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt1u,Xpt1u);
-               float Res1u = sqrt((Zpt1u - Zint1u)*(Zpt1u - Zint1u) + (Xpt1u - Xint1u)*(Xpt1u - Xint1u));
-               Res1u = Res1u*10000.0;
-               float Zpt2u   = 999.9;
-               float Xpt2u   = 999.9;
-               straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt2u,Xpt2u);
-               float Res2u = sqrt((Zpt2u - Zint2u)*(Zpt2u - Zint2u) + (Xpt2u - Xint2u)*(Xpt2u - Xint2u));
-               Res2u = Res2u*10000.0;
+              float wire[2][4]; // [X/Z][1u/2u/3v/4v]
+              float inter[2][4]; // [X/Z][1u/2u/3v/4v]
+              float pt[2][4] = {0}; // [X/Z][1u/2u/3v/4v]
+
+              float res[4]; // [1u,2u,3v,4v]
+
+              for (int j = 0; j < 2; j++) {
+                  wire[1][side*2+j] = Zw[j];
+                  wire[0][side*2+j] = Xw[j];
+                  inter[1][side*2+j]  = 0.0;
+                  inter[0][side*2+j]  = 0.0;
+                  straw_ClosestPoint(Grads[side],Cints[side],
+                                     wire[1][side*2+j],
+                                     wire[0][side*2+j],
+                                     inter[1][side*2+j],
+                                     inter[0][side*2+j]);
+              }
+              for (int j = 0; j < 2; j++) {
+                  straw_NearestTangent(coords[2][side][0],
+                                       coords[0][side][0],
+                                       coords[2][side][1],
+                                       coords[0][side][1],
+                                       iStraws[side*2+j], 2*side+1+j, Nmod,
+                                       pt[1][side*2+j],
+                                       pt[0][side*2+j]);
+    
+                  res[side*2+j] = sqrt( pow(pt[1][2*side+j]-inter[1][2*side+j], 2)
+                                    + pow(pt[0][2*side+j]-inter[0][2*side+j], 2));
+                  res[side*2+j] *= 10000.0;
+              }
 // -------------------------------------------------------------------
-// Find closest point to this line on the hit cells in layers 3 and 4
+// Find closest point to this line on the hit cell in layer 3 or 4 
 // We need to swap the extrapolated tangent into the v frame from the
-// u frame: 
+// u frame:
 // -------------------------------------------------------------------
-               zv1 = zu1;
-               u2xy(xu1,yu1,xx1,yy1);
-               xy2v(xx1,yy1,xv1,yv1);
-//
-               zv2 = zu2;
-               u2xy(xu2,yu2,xx2,yy2);
-               xy2v(xx2,yy2,xv2,yv2);
-//
-               Gradv =(xv2 - xv1)/(zv2 - zv1);
-               Cintv = xv1 - (Gradv * zv1);
-//
-               float Zwire3v = Zw[2];
-               float Xwire3v = Xw[2];
-               float Zint3v  = 999.9;
-               float Xint3v  = 999.9;
-               straw_ClosestPoint(Gradv,Cintv,Zwire3v,Xwire3v,Zint3v,Xint3v);
-               float Zwire4v = Zw[3];
-               float Xwire4v = Xw[3];
-               float Zint4v  = 999.9;
-               float Xint4v  = 999.9;
-               straw_ClosestPoint(Gradv,Cintv,Zwire4v,Xwire4v,Zint4v,Xint4v);
-               float Dist3v = sqrt((Zwire3v-Zint3v)*(Zwire3v-Zint3v) + (Xwire3v-Xint3v)*(Xwire3v-Xint3v)); 
-               int Icon3 = 1;
-               if(Dist3v > 1.2*Size[2]) {
-                             Resols[Irloc-1] = 99999.9;
-                             Icon3 = 0;
+ 
+              for (int i = 0; i < 2; i++) {
+                  coords[2][1-side][i] = coords[2][side][i];
+                  coordConvert(side, TO_XY,
+                               coords[0][side][i],
+                               coords[1][side][i],
+                               coords[0][2][i],
+                               coords[1][2][i]);
+                  coordConvert(1-side, TO_UV,
+                               coords[0][2][i],
+                               coords[1][2][i],
+                               coords[0][1-side][i],
+                               coords[1][1-side][i]);
+              }
+
+              Grads[1-side] =(coords[0][1-side][1] - coords[0][1-side][0])/
+                             (coords[2][1-side][1] - coords[2][1-side][0]);
+              Cints[1-side] = coords[0][1-side][0] - (Grads[1-side] * coords[2][1-side][0]);
+
+              for (int i = 0; i < 2; i++) {
+                  wire[1][2-2*side+i] = Zw[2-2*side+i];
+                  wire[0][2-2*side+i] = Xw[2-2*side+i];
+                  inter[1][2-2*side+i] = 999.9;
+                  inter[0][2-2*side+i] = 999.9;
+                  straw_ClosestPoint(Grads[1-side],Cints[1-side],
+                                     wire[1][2-2*side+i],wire[0][2-2*side+i],
+                                     inter[1][2-2*side+i],inter[0][2-2*side+i]);
+                  float Dist[4];
+                  Dist[2-2*side+i] = sqrt(pow(wire[1][2-2*side+i] - inter[1][2-2*side+i], 2)
+                                        + pow(wire[0][2-2*side+i] - inter[0][2-2*side+i], 2));
+                  Icon[2-2*side+i] = 1;
+                  if(Dist[2-2*side+i] > 1.2*Size[2-2*side+i]) {
+                                      Resols[Irloc] = 99999.9;
+                                      Icon[2-2*side+i] = 0;
+                  }
                }
-               float Dist4v = sqrt((Zwire4v-Zint4v)*(Zwire4v-Zint4v) + (Xwire4v-Xint4v)*(Xwire4v-Xint4v));
-               int Icon4 = 1;
-               if(Dist4v > 1.2*Size[3]) {
-                             Resols[Irloc-1] = 99999.9;
-                             Icon4 = 0;
-               }
+
 // -------------------------------------------------------------------
-// Extrapolated line passes through the hit cells in layers 3 and 4:
+// Extrapolated line passes through the hit cell in layer 3 or 4:
 // Calculate the residuals:
 // -------------------------------------------------------------------
-               if(Icon3 == 1 && Icon4 == 1) {
-                 float Zpt3v = 999.9;
-                 float Xpt3v = 999.9;
-                 straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3v,Xpt3v);
-                 float Res3v = sqrt((Zpt3v - Zint3v)*(Zpt3v - Zint3v) + (Xpt3v - Xint3v)*(Xpt3v - Xint3v));
-                 Res3v = Res3v*10000.0;
-                 float Zpt4v = 999.9;
-                 float Xpt4v = 999.9;
-                 straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt4v,Xpt4v);
-                 float Res4v = sqrt((Zpt4v - Zint4v)*(Zpt4v - Zint4v) + (Xpt4v - Xint4v)*(Xpt4v - Xint4v));
-                 Res4v = Res4v*10000.0;
-                 float Restot = Res3v + Res4v;
-                 Resols[Irloc-1] = Restot;
-               } 
+              int condition;
+              float Restot = 0.0;
+              if (!exclude) {
+                  condition = (Icon[2] == 1 && Icon[3] == 1);
+              }
+              else {
+                  condition = (Icon[2-2*side] == 1);
+              } 
+              if(condition) {
+                for (int j = 0; j < 2; j++) {
+                    if(inc[2-2*side + j]) {
+                      straw_NearestTangent(coords[2][1-side][0],
+                                           coords[0][1-side][0],
+                                           coords[2][1-side][1],
+                                           coords[0][1-side][1],
+                                           iStraws[2-2*side+j], 2-2*side+1+j, Nmod,
+                                           pt[1][2-2*side+j],
+                                           pt[0][2-2*side+j]);
+                      res[2-2*side+j] = sqrt(pow(pt[1][2-2*side+j] - inter[1][2-2*side+j], 2)
+                                           + pow(pt[0][2-2*side+j] - inter[0][2-2*side+j], 2));
+                      res[2-2*side+j] *= 10000.0;
+                      Restot += res[2-2*side+j];
+                    }
+                }
+                Resols[Irloc] = Restot;
+                if (exclude) {
+// -------------------------------------------------------------------
+// We now need to decide if the layer that didnt have a hit is
+// compatible with the track having gone through a cell wall.
+// -------------------------------------------------------------------
+                    IsWall[Irloc] = 1;
+                    int Istart = 0;
+                    int Iend   = 0;
+                    for (int k = 0; k < 2; k++) {
+                        if(iStraws[2-2*side + k] + 1 > 0) {
+// ------------------
+// No hit in Layer 4:
+// ------------------
+                        Istart = iStraws[2-2*side + k] - 1;  
+                        if(Istart < 0) {
+                                     Istart = 0;
+                        }
+                        Iend = iStraws[2-2*side + k] + 3;
+                        if(Iend > 32) {
+                                    Iend = 32;
+                        }
+                            for(int Is = Istart; Is < Iend; Is++) {
+                               float Zwire = Xzaty[0][Is][3-2*side-k][Nmod];
+                               float Xwire = Xzaty[1][Is][3-2*side-k][Nmod];
+                               float Zint = 0.0;
+                               float Xint = 0.0;
+                               straw_ClosestPoint(Grads[1-side],Cints[1-side],Zwire,Xwire,Zint,Xint);
+                               float Dist = sqrt((Zwire-Zint)*(Zwire-Zint) + (Xwire-Xint)*(Xwire-Xint));
+                               if(Dist < 0.25) {
+                                 IsWall[Irloc] = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+              }
+            }
+         }
+      }
+// ------------------------------------------------------------------
+// We now have the residual information for extrapolation of each
+// of the 4 tangents at each test Y position ... make a list of the
+// acceptable possibilities.
+// ------------------------------------------------------------------
+      int Locbst   = 0;
+      float Resbst = 99999.9;
+      float Resid;
+      float Angte;
+      float Angdif;
+// ------------------------------------------------------------------
+// Keep solution with smallest Residual that is most 
+// consistent with track going straight through.
+// ------------------------------------------------------------------
+      if (exclude) {
+          for(int isol = 0; isol < Kyloop; isol++) {
+             Resid = Resols[isol];
+             Angte = Angloc[isol];
+             if(IsWall[isol] == 1) {
+               Angdif = fabs(Angte - Angexp);
+               if(Angdif > 180.0) {
+                 Angdif = 360.0 - Angdif;
+               }
+               if(Angdif < 5.0) {
+                 if(Resid < Resbst) {
+                            Resbst = Resid;
+                            Locbst  = isol;
+                 }
+               }
+             } 
+          }
+          if(Resbst > 1000.0) {
+                              return;
+          }
+      }
+      else {
+          Locbst = 0;
+          Resbst = 99999.9;
+          for(int isol = 0; isol < Kyloop; isol++) {
+             Resid = Resols[isol];
+             if(Resid < Resbst) {
+                                Resbst = Resid;
+                                Locbst = isol;
              }
           }
       }
 // ------------------------------------------------------------------
-// We now have the residual information for extrapolation of each
-// of the 4 tangents at each test Y position ... choose the best.
+// Refit the chosen solution:
 // ------------------------------------------------------------------
-      int Locbst = 0;
-      float Resbst = 99999.9;
-      for(int isol=1; isol<=4000; isol++) {
-         float Resid = Resols[isol-1];
-         if(Resid < Resbst) {
-                            Resbst = Resid;
-                            Locbst = isol;
-         }
-      }
-// ------------------------------------------------------------------
-// Best chosen .... now refit it:
-// ------------------------------------------------------------------
-      int Iybest   = int((Locbst-1)/4) + 1;
-      int Itnbst   = Locbst - ((Iybest-1)*4);
-      float Ybest  = float(Iybest)/100.0;
-      Ybest = Ybest - 4.55;
-
+      int Iybest  = (Locbst)/4;
+      int Itnbst  = Locbst - Iybest * 4;
+      float Ybest  = float(Iybest + 1)/Iybin_Div;
+      Ybest -= 4.55;
+//
 	getEndsLoop(Nmod, Ybest, NULL, 2);
 //
-      Zw[0] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-      Xw[0] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-      Dr[0] = Hits[iStraws[0]-1][0][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-      //straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-      //straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-      yu1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
+      for (int i = 0; i < LAYERS; i++) {
 //
-      Zw[1] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-      Xw[1] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-      Dr[1] = Hits[iStraws[1]-1][1][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-      //straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-      //straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-      yu2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      Zw[2] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-      Xw[2] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-      Dr[2] = Hits[iStraws[2]-1][2][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-      //straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-      //straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-      yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      Zw[3] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-      Xw[3] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-      Dr[3] = Hits[iStraws[3]-1][3][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-      //straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-      //straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-      yv4   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-// 
-      int iflagb = 0;
-      straw_CommonTangent(Nmod,iStraws[0],Layer1,iStraws[1],Layer2,Itnbst,zu1,xu1,zu2,xu2,iflagb);
-      Gradu = 999.9;
-      if(fabs(zu2-zu1) > 1.0e-6) {
-                                 Gradu = (xu2 - xu1) / (zu2 - zu1);
+//        int l = (k + 2*side)%4;
+//        int m = (k < 2) ? k : 2;
+//        int n = l/2;
+
+          if (inc[i]) {
+          Zw[i] = Xzaty[0][iStraws[i]][i][Nmod];
+          Xw[i] = Xzaty[1][iStraws[i]][i][Nmod];
+          Dr[i] = Hits[iStraws[i]][i][Nmod];
+          straw.Ybot = (*strawGeoms[i/2])[Nmod][i][iStraws[i]][0][1];
+          straw.Ytop = (*strawGeoms[i/2])[Nmod][i][iStraws[i]][1][1];
+          coords[1][i/2][i] = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
+          }
       }
-      if(fabs(zu2-zu1) <= 1.0e-6) {
+//
+//
+      int iflagb = 0;
+      straw_CommonTangent(Nmod,iStraws[2*side],2*side,iStraws[2*side+1],2*side+1,Itnbst,
+                          coords[2][side][0],
+                          coords[0][side][0],
+                          coords[2][side][1],
+                          coords[0][side][1],
+                          iflagb);
+      if(fabs(coords[2][side][1] - coords[2][side][0]) > 1.0e-6) {
+                                 Grads[side] = (coords[0][side][1] - coords[0][side][0])/
+                                               (coords[2][side][1] - coords[2][side][0]);
+      }
+      else {
                                   return;
       }
-      Cintu = xu1 - (Gradu * zu1);
-//
-      float Zwire1ub = Zw[0];
-      float Xwire1ub = Xw[0];
-      float Zint1ub  = 999.9;
-      float Xint1ub  = 999.9;
-      straw_ClosestPoint(Gradu,Cintu,Zwire1ub,Xwire1ub,Zint1ub,Xint1ub);
-      float Dist1ub = sqrt((Zwire1ub-Zint1ub)*(Zwire1ub-Zint1ub) + (Xwire1ub-Xint1ub)*(Xwire1ub-Xint1ub));
-      if(Dist1ub > 1.2*Size[0]) {
-                                return;
+      Cints[side] = coords[0][side][0] - (Grads[side] * coords[2][side][0]);
+      float wireb[2][4] = {0.0}; // [X,Z][1u,2u,3v,4v]
+      float interb[2][4] = {0.0}; // [X,Z][1u,2u,3v,4v]
+      float ptb[2][4] = {0.0}; // [X,Z][1u,2u,3v,4v]
+      float Distb[4] = {0.0}; // [1u,2u,3v,4v]
+      float resb[4] = {0.0}; // [1u,2u,3v,4v]
+
+      for (int i = 0; i < 2; i++) {
+          int j, k;
+          if (side == 1)
+              j = (i+2)%4;
+          else
+              j = i;
+          k = j/2;
+          if (inc[j]) {
+              wireb[1][j] = Zw[j];
+              wireb[0][j] = Xw[j];
+              straw_ClosestPoint(Grads[k],Cints[k],
+                                 wireb[1][j],wireb[0][j],
+                                 interb[1][j],interb[0][j]);
+              Distb[j] = sqrt(pow(wireb[1][j] - interb[1][j], 2)
+                                 + pow(wireb[0][j] - interb[0][j], 2));
+              if(Distb[j] > 1.2*Size[j]) {
+                                        return;
+              }
+              straw_NearestTangent(
+                                   coords[2][k][0], 
+                                   coords[0][k][0], 
+                                   coords[2][k][1], 
+                                   coords[0][k][1], 
+                                   iStraws[j], j+1,Nmod,
+                                   ptb[1][j],
+                                   ptb[0][j]);
+          }
       }
-      float Zpt1ub = 999.9;
-      float Xpt1ub = 999.9;
-      straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt1ub,Xpt1ub);
-//
-      float Zwire2ub = Zw[1];
-      float Xwire2ub = Xw[1];
-      float Zint2ub  = 999.9;
-      float Xint2ub  = 999.9;
-      straw_ClosestPoint(Gradu,Cintu,Zwire2ub,Xwire2ub,Zint2ub,Xint2ub);
-      float Dist2ub = sqrt((Zwire2ub-Zint2ub)*(Zwire2ub-Zint2ub) + (Xwire2ub-Xint2ub)*(Xwire2ub-Xint2ub));
-      if(Dist2ub > 1.2*Size[1]) {
-                                return;
-      }
-      float Zpt2ub = 999.9;
-      float Xpt2ub = 999.9;
-      straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt2ub,Xpt2ub);
 // -------------------------------------------------------------------
 // Find closest point to this line on the hit cells in layers 3 and 4
 // We need to swap the extrapolated tangent into the v frame from the
 // u frame:
 // -------------------------------------------------------------------
-      zv1 = zu1;
-      u2xy(xu1,yu1,xx1,yy1);
-      xy2v(xx1,yy1,xv1,yv1);
 //
-      zv2 = zu2;
-      u2xy(xu2,yu2,xx2,yy2);
-      xy2v(xx2,yy2,xv2,yv2);
-//
-      if(fabs(zv2-zv1) > 1.0e-6) {
-                                 Gradv =(xv2 - xv1)/(zv2 - zv1);   
+      for (int i = 0; i < 2; i++) {
+          coords[2][1-side][i] = coords[2][side][i];
+          coordConvert(side, TO_XY,
+                       coords[0][side][i],
+                       coords[1][side][i],
+                       coords[0][2][i],
+                       coords[1][2][i]);
+          coordConvert(1-side, TO_UV,
+                       coords[0][2][i],
+                       coords[1][2][i],
+                       coords[0][1-side][i],
+                       coords[1][1-side][i]);
       }
-      if(fabs(zv2-zv1) <= 1.0e-6) {
-                                  return;
+      if(fabs(coords[2][1-side][1] - coords[2][1-side][0]) > 1.0e-6) {
+          Grads[1-side] = (coords[0][1-side][1] - coords[0][1-side][0])/
+                          (coords[2][1-side][1] - coords[2][1-side][0]);
       }
-      Cintv = xv1 - (Gradv * zv1); 
-//
-      float Zwire3vb = Zw[2];
-      float Xwire3vb = Xw[2];
-      float Zint3vb  = 999.9;
-      float Xint3vb  = 999.9;
-      straw_ClosestPoint(Gradv,Cintv,Zwire3vb,Xwire3vb,Zint3vb,Xint3vb);
-      float Dist3vb = sqrt((Zwire3vb-Zint3vb)*(Zwire3vb-Zint3vb) + (Xwire3vb-Xint3vb)*(Xwire3vb-Xint3vb));
-      if(Dist3vb > 1.2*Size[2]) {
-                                return;
+      else {
+          return;
       }
-      float Zpt3vb = 999.9;
-      float Xpt3vb = 999.9;
-      straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3vb,Xpt3vb);
-      float Zwire4vb = Zw[3];
-      float Xwire4vb = Xw[3];
-      float Zint4vb  = 999.9;
-      float Xint4vb  = 999.9;
-      straw_ClosestPoint(Gradv,Cintv,Zwire4vb,Xwire4vb,Zint4vb,Xint4vb);
-      float Dist4vb = sqrt((Zwire4vb-Zint4vb)*(Zwire4vb-Zint4vb) + (Xwire4vb-Xint4vb)*(Xwire4vb-Xint4vb));
-      if(Dist4vb > 1.2*Size[3]) {
-                                return;
+      Cints[1-side] = coords[0][1-side][0] - (Grads[1-side] * coords[2][1-side][0]);
+
+      for (int i = 2; i < 4; i++) {
+          int j, k;
+          if (side == 1)
+              j = (i+2)%4;
+          else
+              j = i;
+          k = j/2;
+          if (inc[j]) {
+              wireb[1][j] = Zw[j];
+              wireb[0][j] = Xw[j];
+              straw_ClosestPoint(Grads[k],Cints[k],
+                                 wireb[1][j],wireb[0][j],
+                                 interb[1][j],interb[0][j]);
+              Distb[j] = sqrt(pow(wireb[1][j] - interb[1][j], 2)
+                                 + pow(wireb[0][j] - interb[0][j], 2));
+              if(Distb[j] > 1.2*Size[j]) {
+                                        return;
+              }
+              straw_NearestTangent(
+                                   coords[2][k][0], 
+                                   coords[0][k][0], 
+                                   coords[2][k][1], 
+                                   coords[0][k][1], 
+                                   iStraws[j], j+1,Nmod,
+                                   ptb[1][j],
+                                   ptb[0][j]);
+          }
       }
-      float Zpt4vb = 999.9;
-      float Xpt4vb = 999.9;
-      straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt4vb,Xpt4vb);
-      float Res1ub = sqrt((Zpt1ub - Zint1ub)*(Zpt1ub - Zint1ub) + (Xpt1ub - Xint1ub)*(Xpt1ub - Xint1ub));
-      Res1ub = Res1ub*10000.0;
-      float Res2ub = sqrt((Zpt2ub - Zint2ub)*(Zpt2ub - Zint2ub) + (Xpt2ub - Xint2ub)*(Xpt2ub - Xint2ub));
-      Res2ub = Res2ub*10000.0;
-      float Res3vb = sqrt((Zpt3vb - Zint3vb)*(Zpt3vb - Zint3vb) + (Xpt3vb - Xint3vb)*(Xpt3vb - Xint3vb));
-      Res3vb = Res3vb*10000.0;
-      float Res4vb = sqrt((Zpt4vb - Zint4vb)*(Zpt4vb - Zint4vb) + (Xpt4vb - Xint4vb)*(Xpt4vb - Xint4vb));
-      Res4vb = Res4vb*10000.0;
-// -----------------------------------------------------------
-// Convert all points back into the x-y frame for fitting.
-// -----------------------------------------------------------
-      float Xpt1b = 0.0;
-      u2xy(Xpt1ub,yu1,Xpt1b,yy1);
-      float Zpt1b = Zpt1ub;
+      for (int i = 2; i < 4; i++) {
+          if (inc[i]) {
+              resb[i] = sqrt( pow(ptb[1][i]-interb[1][i], 2) // Layer 1 (or 1-or-2)
+                            + pow(ptb[0][i]-interb[0][i], 2));
+              resb[i] *= 10000.0;
+          }
+      }
+// ---------------------------------------------------------------------
+// Convert all points back into xy frame for fitting:
+// ---------------------------------------------------------------------
+      float ptb_xy[2][4] = {0}; // [X,Z][1,2,3,4]
+      float wireb_xy[2][4] = {0}; // [X,Z][1,2,3,4]
+      float interb_xy[2][4] = {0}; // [X,Z][1,2,3,4]
+      for (int i = 0; i < LAYERS; i++) {
+          int j, k;
+          if (side == 1)
+              j = (i+2)%4;
+          else
+              j = i;
+          k = j/2;
+          if (inc[j]) {
+              ptb_xy[1][j] = ptb[1][j];
+              coordConvert(k, TO_XY, ptb[0][j],coords[1][k][j],ptb_xy[0][j],coords[1][2][j]);
+              straw_FillArray(iStraws[j]+1,j+1,Nmod,ptb_xy[1][j],ptb_xy[0][j]);
+              Yhits[iStraws[j]][j][Nmod] = Ybest;
+              Mask[iStraws[j]][j][Nmod] = 1;
+
+              wireb_xy[1][j] = wireb[1][j];
+              coordConvert(k, TO_XY, wireb[0][j], coords[1][k][j], wireb_xy[0][j], coords[1][2][j]);
+              interb_xy[1][j] = interb[1][j];
+              coordConvert(k, TO_XY, interb[0][j], coords[1][k][j], interb_xy[0][j], coords[1][2][j]);
+          }
+      }
 //
-      float Xpt2b = 0.0;
-      u2xy(Xpt2ub,yu2,Xpt2b,yy2);
-      float Zpt2b = Zpt2ub;
-//
-      float Xpt3b = 0.0;
-      v2xy(Xpt3vb,yv3,Xpt3b,yy3);
-      float Zpt3b = Zpt3vb;
-//
-      float Xpt4b = 0.0;    
-      v2xy(Xpt4vb,yv4,Xpt4b,yy4);
-      float Zpt4b = Zpt4vb;
-//
-      straw_FillArray(iStraws[0],Layer1,Nmod,Zpt1b,Xpt1b);
-      straw_FillArray(iStraws[1],Layer2,Nmod,Zpt2b,Xpt2b);
-      straw_FillArray(iStraws[2],Layer3,Nmod,Zpt3b,Xpt3b);
-      straw_FillArray(iStraws[3],Layer4,Nmod,Zpt4b,Xpt4b);
-//
-      Yhits[iStraws[0]-1][Layer1-1][Nmod-1] = Ybest;
-      Yhits[iStraws[1]-1][Layer2-1][Nmod-1] = Ybest;
-      Yhits[iStraws[2]-1][Layer3-1][Nmod-1] = Ybest;
-      Yhits[iStraws[3]-1][Layer4-1][Nmod-1] = Ybest;
-      Mask[iStraws[0]-1][Layer1-1][Nmod-1] = 1;
-      Mask[iStraws[1]-1][Layer2-1][Nmod-1] = 1;
-      Mask[iStraws[2]-1][Layer3-1][Nmod-1] = 1;
-      Mask[iStraws[3]-1][Layer4-1][Nmod-1] = 1;
-      Trkinf[0][Nmod-1]  = float(iStraws[0]);
-      Trkinf[1][Nmod-1]  = float(iStraws[1]);
-      Trkinf[2][Nmod-1]  = float(iStraws[2]);
-      Trkinf[3][Nmod-1]  = float(iStraws[3]);
-//
-      Trkinf[4][Nmod-1]  = Hits[iStraws[0]-1][Layer1-1][Nmod-1];
-      Trkinf[5][Nmod-1]  = Zpt1b;
-      Trkinf[6][Nmod-1]  = Xpt1b;
-      Trkinf[7][Nmod-1]  = Ybest;
       StrHist.fYbest[0]->Fill(Ybest);
-      float Zwire1 = Zwire1ub;
-      float Xwire1 = 0.0;
-      u2xy(Xwire1ub,yu1,Xwire1,yy1);
-      Trkinf[8][Nmod-1]  = Zwire1;
-      Trkinf[9][Nmod-1]  = Xwire1;
-      float Zint1 = Zint1ub;
-      float Xint1 = 0.0;
-      u2xy(Xint1ub,yu1,Xint1,yy1);
-      Trkinf[10][Nmod-1] = Zint1;
-      Trkinf[11][Nmod-1] = Xint1;
-//
-      Trkinf[12][Nmod-1] = Hits[iStraws[1]-1][Layer2-1][Nmod-1];
-      Trkinf[13][Nmod-1] = Zpt2b;
-      Trkinf[14][Nmod-1] = Xpt2b;
-      Trkinf[15][Nmod-1] = Ybest;
-      float Zwire2 = Zwire2ub;
-      float Xwire2 = 0.0;
-      u2xy(Xwire2ub,yu2,Xwire2,yy2);
-      float Zint2 = Zint2ub;
-      float Xint2 = 0.0;
-      u2xy(Xint2ub,yu2,Xint2,yy2);
-      Trkinf[16][Nmod-1] = Zwire2;
-      Trkinf[17][Nmod-1] = Xwire2;
-      Trkinf[18][Nmod-1] = Zint2;
-      Trkinf[19][Nmod-1] = Xint2;
-//
-      Trkinf[20][Nmod-1] = Hits[iStraws[2]-1][Layer3-1][Nmod-1];
-      Trkinf[21][Nmod-1] = Zpt3b;
-      Trkinf[22][Nmod-1] = Xpt3b;
-      Trkinf[23][Nmod-1] = Ybest;
-      float Zwire3 = Zwire3vb;
-      float Xwire3 = 0.0;
-      v2xy(Xwire3vb,yv3,Xwire3,yy3);
-      float Zint3 = Zint3vb;
-      float Xint3 = 0.0;
-      v2xy(Xint3vb,yv3,Xint3,yy3);
-      Trkinf[24][Nmod-1] = Zwire3;
-      Trkinf[25][Nmod-1] = Xwire3;
-      Trkinf[26][Nmod-1] = Zint3;
-      Trkinf[27][Nmod-1] = Xint3;
-//
-      Trkinf[28][Nmod-1] = Hits[iStraws[3]-1][Layer4-1][Nmod-1];
-      Trkinf[29][Nmod-1] = Zpt4b;
-      Trkinf[30][Nmod-1] = Xpt4b;
-      Trkinf[31][Nmod-1] = Ybest;
-      float Zwire4 = Zwire4vb;
-      float Xwire4 = 0.0;
-      v2xy(Xwire4vb,yv4,Xwire4,yy4);
-      float Zint4 = Zint4vb;
-      float Xint4 = 0.0;
-      v2xy(Xint4vb,yv4,Xint4,yy4);
-      Trkinf[32][Nmod-1] = Zwire4;
-      Trkinf[33][Nmod-1] = Xwire4;
-      Trkinf[34][Nmod-1] = Zint4;
-      Trkinf[35][Nmod-1] = Xint4;
+
 // ------------------------------------------------------------------
 // Finally make the fitted TE from the obtained space points.
-// Make Xzaty contain wire coordinates in xy frame:
+// Must set up xzaty in xy frame for this:
 // ------------------------------------------------------------------
 	getEndsLoop(Nmod, Ybest, iStraws, 3);
+//
       int Ntofit = Nposte;
-      for(int ifit=1; ifit<=Nposte; ifit++) {
-         Xptsfit[ifit-1] = Xypost[1][ifit-1][Nmod-1];
-         Zptsfit[ifit-1] = Xypost[0][ifit-1][Nmod-1];
+      for(int ifit = 0; ifit < Nposte; ifit++) {
+         Xptsfit[ifit] = Xypost[1][ifit][Nmod];
+         Zptsfit[ifit] = Xypost[0][ifit][Nmod];
       }
       float Grfit = 0.0;
       float Cfit  = 0.0;
       Linfit(Zptsfit,Xptsfit,Ntofit,Grfit,Cfit);
-      StrHist.fGrfit[0]->Fill(Grfit);
       float zte1 = 0.0;
       float xte1 = 0.0;
       float zte2 = 0.0;
       float xte2 = 0.0;
-      straw_ClosestPoint(Grfit,Cfit,Zpt1b,Xpt1b,zte1,xte1);
-      straw_ClosestPoint(Grfit,Cfit,Zpt4b,Xpt4b,zte2,xte2);
+      straw_ClosestPoint(Grfit,Cfit,ptb_xy[1][0],ptb_xy[0][0],zte1,xte1);
+      if (inc[3]) {
+          straw_ClosestPoint(Grfit,Cfit,ptb_xy[1][3],ptb_xy[0][3],zte2,xte2);
+      }
+      else {
+          straw_ClosestPoint(Grfit,Cfit,ptb_xy[1][2],ptb_xy[0][2],zte2,xte2);
+      }
 //
-
-//    cout<<" zte1 xte1 zte2 xte2: "<<zte1<<" "<<xte1<<" "<<zte2<<" "<<xte2<<endl;
       float xdiff  = xte2 - xte1;
       float zdiff  = zte2 - zte1;
       float Phizx  = phi_arctan(xdiff,zdiff);
@@ -3069,119 +2473,66 @@ void straw_FindTrack_4(int Nmod, ofstream &trackeventsfile) {
                          Phizxd = Phizxd - 360.0;
       }
       StrHist.fPhizxd[0]->Fill(Phizxd);
+
 // --------------------------------------------
 // Turn into milliradians:
 // --------------------------------------------
       float Phizxmr = Phizxd*1000.0*Pibk/180.0;
-//
-      Trkinf[36][Nmod-1] = zte1;
-      Trkinf[37][Nmod-1] = xte1;
       StrHist.fZxte[0]->Fill(zte1,xte1);
-      Trkinf[38][Nmod-1] = zte2;
-      Trkinf[39][Nmod-1] = xte2;
+
+//
       float Grrr = (xte2 - xte1) / (zte2 - zte1);
       float Ctrk = xte1 - (Grrr * zte1);
-      Trkinf[40][Nmod-1] = Grrr;
-      Trkinf[41][Nmod-1] = Ctrk;
 // ------------------------------------------------------------------
 // Finally store residuals to fitted track.
 // ------------------------------------------------------------------
-      float Zintt1 = 0.0;
-      float Xintt1 = 0.0; 
-      straw_ClosestPoint(Grrr,Ctrk,Zwire1,Xwire1,Zintt1,Xintt1);
-      float Zptt1 = 0.0;
-      float Xptt1 = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[0],Layer1,Nmod,Zptt1,Xptt1);
-testcount++;
-if (testcount< 100)
-printf("hello %f\n", Xptt1);
-      float Zintt2 = 0.0;
-      float Xintt2 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire2,Xwire2,Zintt2,Xintt2);
-      float Zptt2 = 0.0;
-      float Xptt2 = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[1],Layer2,Nmod,Zptt2,Xptt2);
-      float Zintt3 = 0.0;
-      float Xintt3 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire3,Xwire3,Zintt3,Xintt3);
-      float Zptt3 = 0.0;
-      float Xptt3 = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[2],Layer3,Nmod,Zptt3,Xptt3);
-      float Zintt4 = 0.0;
-      float Xintt4 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire4,Xwire4,Zintt4,Xintt4);
-      float Zptt4 = 0.0;
-      float Xptt4 = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[3],Layer4,Nmod,Zptt4,Xptt4);
+      float intt[2][4] = {0};
+      float ptt[2][4] = {0};
+      for (int i = 0; i < LAYERS; i++) {
+          int j, k;
+          if (side == 1)
+              j = (i+2)%4;
+          else
+              j = i;
+          k = j/2;
+          if (inc[j]) {
+              straw_ClosestPoint(Grrr,Ctrk,wireb_xy[1][j],wireb_xy[0][j],intt[1][j],intt[0][j]);
+              straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[j],j+1,Nmod,ptt[1][j],ptt[0][j]);
+              if (options.verbose) {
+                  cout<< " Layer" << j+1 << ": "<<iStraws[0]+1<<" "<<ptb[1][j]<<" "<<ptb[0][j]<<" "<<ptt[1][j]<<" "<<ptb[0][j]<<endl;
+              }
+          }
+      }
+
 // ------------------------------------------------------------------
 // (Zpt1,Xpt1) etc are the space points on the drift circles that 
 // have been fitted to make the track.
 // (Zptt1,Xptt1) are the closest points on the drift circles to the
 // fitted track...
 // ------------------------------------------------------------------
-      if (options.verbose) {
-          cout<< " Layer1: "<<iStraws[0]<<" "<<Zpt1b<<" "<<Xpt1b<<" "<<Zptt1<<" "<<Xptt1<<endl;
-          cout<< " Layer2: "<<iStraws[1]<<" "<<Zpt2b<<" "<<Xpt2b<<" "<<Zptt2<<" "<<Xptt2<<endl;
-          cout<< " Layer3: "<<iStraws[2]<<" "<<Zpt3b<<" "<<Xpt3b<<" "<<Zptt3<<" "<<Xptt3<<endl;
-          cout<< " Layer4: "<<iStraws[3]<<" "<<Zpt4b<<" "<<Xpt4b<<" "<<Zptt4<<" "<<Xptt4<<endl;
-      }
-//
-      float Rest1 = sqrt((Zptt1 - Zintt1)*(Zptt1 - Zintt1) + (Xptt1 - Xintt1)*(Xptt1 - Xintt1));
-      Rest1 = Rest1*10000.0;
-      float rrr = 0.0;
-      rrr = randomFloat();
-      if(rrr > 0.5) {
-                    Rest1 = -Rest1;
-      }
-      float Rest2 = sqrt((Zptt2 - Zintt2)*(Zptt2 - Zintt2) + (Xptt2 - Xintt2)*(Xptt2 - Xintt2));
-      Rest2 = Rest2*10000.0;
-      rrr = randomFloat();
-      if(rrr > 0.5) {
-                    Rest2 = -Rest2;
-      }
 
-      float Rest3 = sqrt((Zptt3 - Zintt3)*(Zptt3 - Zintt3) + (Xptt3 - Xintt3)*(Xptt3 - Xintt3));
-      Rest3 = Rest3*10000.0;
-      rrr = randomFloat();
-      if(rrr > 0.5) {
-                    Rest3 = -Rest3;
+      float rest[4]; // [1u,2u,3v,4v]
+      for (int i = 0; i < LAYERS; i++) {
+          int j, k;
+          if (side == 1)
+              j = (i+2)%4;
+          else
+              j = i;
+          k = j/2;
+          if (inc[j]) {
+              rest[j] = sqrt( pow(ptt[1][j]-intt[1][j], 2)
+                            + pow(ptt[0][j]-intt[0][j], 2));
+              rest[j] *= 10000.0;
+              float rrr = randomFloat();
+              if(rrr > 0.5) {
+                  rest[j] *= -1;
+              }
+
+              Zxhit[0][iStraws[i]][i][Nmod] = ptt[1][i];
+              Zxhit[1][iStraws[i]][i][Nmod] = ptt[0][i];
+
+          }
       }
-      float Rest4 = sqrt((Zptt4 - Zintt4)*(Zptt4 - Zintt4) + (Xptt4 - Xintt4)*(Xptt4 - Xintt4));
-      Rest4 = Rest4*10000.0;
-      rrr = randomFloat();
-      if(rrr > 0.5) {
-                    Rest4 = -Rest4;
-      }
-      StrHist.fRest1[0]->Fill(Rest1);
-      StrHist.fRest2[0]->Fill(Rest2);
-      StrHist.fRest3[0]->Fill(Rest3);
-      StrHist.fRest4[0]->Fill(Rest4);
-      StrHist.fRest[0]->Fill(Rest1);
-      StrHist.fRest[0]->Fill(Rest2);
-      StrHist.fRest[0]->Fill(Rest3);
-      StrHist.fRest[0]->Fill(Rest4);
-//
-      Trkinf[42][Nmod-1] = Rest1;
-      Trkinf[43][Nmod-1] = Rest2;
-      Trkinf[44][Nmod-1] = Rest3;
-      Trkinf[45][Nmod-1] = Rest4;
-      Trkinf[46][Nmod-1] = Zptt1;
-      Trkinf[47][Nmod-1] = Xptt1;
-      Trkinf[48][Nmod-1] = Zptt2;
-      Trkinf[49][Nmod-1] = Xptt2;
-      Trkinf[50][Nmod-1] = Zptt3;
-      Trkinf[51][Nmod-1] = Xptt3;
-      Trkinf[52][Nmod-1] = Zptt4;
-      Trkinf[53][Nmod-1] = Xptt4;
-//
-      Zxhit[0][iStraws[0]-1][Layer1-1][Nmod-1] = Zptt1;
-      Zxhit[1][iStraws[0]-1][Layer1-1][Nmod-1] = Xptt1;
-      Zxhit[0][iStraws[1]-1][Layer2-1][Nmod-1] = Zptt2;
-      Zxhit[1][iStraws[1]-1][Layer2-1][Nmod-1] = Xptt2;
-      Zxhit[0][iStraws[2]-1][Layer3-1][Nmod-1] = Zptt3;
-      Zxhit[1][iStraws[2]-1][Layer3-1][Nmod-1] = Xptt3;
-      Zxhit[0][iStraws[3]-1][Layer4-1][Nmod-1] = Zptt4;
-      Zxhit[1][iStraws[3]-1][Layer4-1][Nmod-1] = Xptt4;
 
 //------------------------------------------------
 //	Write to file for visualisation
@@ -3194,37 +2545,21 @@ printf("hello %f\n", Xptt1);
       else
 	first = 0;
       trackeventsfile << "	{\n";
-      trackeventsfile << "	module = "<<Nmod<<"\n";
+      trackeventsfile << "	module = "<<Nmod+1<<"\n";
       trackeventsfile << "	hitnum = 4\n";
       trackeventsfile << "	hits = (\n";
 
-      trackeventsfile << "		{\n";
-      trackeventsfile << "		X = "<<Xptt1<<"\n";
-      trackeventsfile << "		Z = "<<Zptt1<<"\n";
-      trackeventsfile << "		layer = 1\n";
-      trackeventsfile << "		straw = "<<iStraws[0]<<"\n";
-      trackeventsfile << "		},\n";
-
-      trackeventsfile << "		{\n";
-      trackeventsfile << "		X = "<<Xptt2<<"\n";
-      trackeventsfile << "		Z = "<<Zptt2<<"\n";
-      trackeventsfile << "		layer = 2\n";
-      trackeventsfile << "		straw = "<<iStraws[1]<<"\n";
-      trackeventsfile << "		},\n";
-
-      trackeventsfile << "		{\n";
-      trackeventsfile << "		X = "<<Xptt3<<"\n";
-      trackeventsfile << "		Z = "<<Zptt3<<"\n";
-      trackeventsfile << "		layer = 3\n";
-      trackeventsfile << "		straw = "<<iStraws[2]<<"\n";
-      trackeventsfile << "		},\n";
-
-      trackeventsfile << "		{\n";
-      trackeventsfile << "		X = "<<Xptt4<<"\n";
-      trackeventsfile << "		Z = "<<Zptt4<<"\n";
-      trackeventsfile << "		layer = 4\n";
-      trackeventsfile << "		straw = "<<iStraws[3]<<"\n";
-      trackeventsfile << "		}\n";
+      for (int i = 0; i < LAYERS; i++) {
+          trackeventsfile << "		{\n";
+          trackeventsfile << "		X = "<<ptt[0][i]<<"\n";
+          trackeventsfile << "		Z = "<<ptt[1][i]<<"\n";
+          trackeventsfile << "		layer = "<<i+1<<"\n";
+          trackeventsfile << "		straw = "<<iStraws[i]+1<<"\n";
+	if (i == 3)
+          trackeventsfile << "		}\n";
+	else
+          trackeventsfile << "		},\n";
+      }
 
       trackeventsfile << "	);\n";
 
@@ -3239,1407 +2574,58 @@ printf("hello %f\n", Xptt1);
       trackeventsfile << "	Ybest = "<<Ybest<<"\n";
 
       if (options.verbose) {
-          cout<<" Made a 4 hit Track Element in Module "<<Nmod<<endl;
+          cout<<" Made a 4 hit Track Element in Module "<<Nmod+1<<endl;
       }
-      StrHist.fTrkMod[0]->Fill(Nmod-0.5);
-}
-// -----------------------------------------------------------------
-void Strte2(int Nmod,int iStraws[LAYERS]) {
-// ------------------------------------------------------------------
-// Finds a TE in a Straw Module where hits exist in Layers 1
-// and 2 and either layer 3 Or layer 4. 
-// The TE is created if the position of the track in the layer 
-// without a hit is compatible with having gone through the cell 
-// wall.
-// ------------------------------------------------------------------
-      float Xptsfit[4];
-      float Zptsfit[4];
-//
-      float Zw[3];
-      float Xw[3];
-      float Dr[3];
-      float Resols[400];
-      float Angloc[400];
-      int   IsWall[400];
-//
-      float Pibk  = 3.1415926535;
-      float Twopi = 2.0*Pibk;
-      float Piby2 = Pibk/2.0;
-      float Ysize = 0.1;
-      float Ystep = 10.0/Ysize;
-      float Yloop = 4.0 * Ystep;
-      int   Kystep = round(Ystep);
-      int   Kyloop = round(Yloop);
-//
-      for(int i=1; i<=Kyloop; i++) {
-         Resols[i-1] = 99999999.0;
-         Angloc[i-1] = 99999999.0;
-         IsWall[i-1] = 0;
-      }
-// ------------------------------------------------------------------
-// Declare some variables for later use.
-// ------------------------------------------------------------------
-      straw.Xbot = 0.0;
-      straw.Ybot = 0.0;
-      straw.Zbot = 0.0;
-      straw.Xtop = 0.0;
-      straw.Ytop = 0.0;
-      straw.Ztop = 0.0;
-      float xx1  = 0.0;
-      float xx2  = 0.0;
-      float xx3  = 0.0;
-      float xx4  = 0.0;
-      float zz1  = 0.0;
-      float zz2  = 0.0;
-      float zz3  = 0.0;
-      float zz4  = 0.0;
-      float yy1  = 0.0;
-      float yy2  = 0.0;
-      float yy3  = 0.0;
-      float yy4  = 0.0;
-      float xu1  = 0.0;
-      float xu2  = 0.0;
-      float xu3  = 0.0;
-      float xu4  = 0.0;
-      float zu1  = 0.0;
-      float zu2  = 0.0;
-      float zu3  = 0.0;
-      float zu4  = 0.0;
-      float yu1  = 0.0;
-      float yu2  = 0.0;
-      float yu3  = 0.0;
-      float yu4  = 0.0;
-//
-      float Gradu = 0.0;
-      float Cintu = 0.0;
-      float Gradv = 0.0;
-      float Cintv = 0.0;
-      float xv1  = 0.0;
-      float xv2  = 0.0;
-      float xv3  = 0.0;
-      float xv4  = 0.0;
-      float zv1  = 0.0;
-      float zv2  = 0.0;
-      float zv3  = 0.0;
-      float zv4  = 0.0;
-      float yv1  = 0.0;
-      float yv2  = 0.0;
-      float yv3  = 0.0;
-      float yv4  = 0.0;
-//
-      int Layer1 = 1;
-      int Layer2 = 2;
-      int Layer3 = 3;
-      int Layer4 = 4;
-      float Angexp = 0.0;
-// ------------------------------------------------------------------
-// Do track finding at various positions vertically and minimise the
-// residuals:
-// ------------------------------------------------------------------
-      for(int Iybin=1; Iybin<=91; Iybin++) {
-         float Ytest = float(Iybin)/10.0;
-         Ytest = Ytest - 4.55;
-	getEndsLoop(Nmod, Ytest, NULL, 1);
-// ------------------------------------------------------------------
-// Have found the hit straws in layers 1 and 2.
-// Find the 4 possible tangents to these two drift circles.
-// Extrapolate to layers 3 and 4 ...
-// ------------------------------------------------------------------
-         Zw[0] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-         Xw[0] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-         Dr[0] = Hits[iStraws[0]-1][0][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-         //straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-         //straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-         yu1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-//
-         Zw[1] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-         Xw[1] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-         Dr[1] = Hits[iStraws[1]-1][1][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-         //straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-         //straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-         yu2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-         if(iStraws[2] > 0) {
-           Zw[2] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-           Xw[2] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-           Dr[2] = Hits[iStraws[2]-1][2][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-         //  straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-         //  straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-           yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-         }
-         if(iStraws[3] > 0) {
-           Zw[2] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-           Xw[2] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-           Dr[2] = Hits[iStraws[3]-1][3][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-         //  straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-         //  straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-           yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-         }
-//
-         for(int itan=1; itan<=4; itan++) {
-// ------------------------------------------------------------------
-// Routine straw_CommonTangent returns the Z and X points of the common
-// tangents to the drift circles for each of the 4 cases in turn.
-// ------------------------------------------------------------------
-//   Itan = 1 MEANS OUTER EDGE TANGENT , RHS OF DRIFT CIRCLES
-//       = 2        ''    ''     ''     LHS  ''  ''     ''
-//       = 3       CROSSED TANGENT , BOTTOM RHS TO TOP LHS
-//       = 4           ''     ''       ''   LHS        RHS
-// ------------------------------------------------------------------
-            int iflag = 0;
-            zu1 = 0.0;
-            xu1 = 0.0;
-            zu2 = 0.0;
-            xu2 = 0.0;
-            straw_CommonTangent(Nmod,iStraws[0],Layer1,iStraws[1],Layer2,itan,zu1,xu1,zu2,xu2,iflag);
-            int Irloc = (Iybin-1)*4 + itan;
-            int Icon = 1;
-            if(fabs(zu2-zu1) > 1.0e-6) {
-                    Gradu = (xu2 - xu1) / (zu2 - zu1);
-                    u2xy(xu1,yu1,xx1,yy1);
-                    u2xy(xu2,yu2,xx2,yy2);
-                    zz2 = zu2;
-                    zz1 = zu1;
-                    Angloc[Irloc-1] = phi_arctan((xx2-xx1),(zz2-zz1));
-                    if(Angloc[Irloc-1] < 0.0) {
-                      Angloc[Irloc-1] = Angloc[Irloc-1] + Twopi;
-                    }
-                    Angloc[Irloc-1] = Angloc[Irloc-1]*180.0/Pibk;
-                    Icon = 1;
-            }
-            if(fabs(zu2-zu1) <= 1.0e-6) {
-                    Resols[Irloc-1] = 99999.9;
-                    Icon = 0;
-            }
-            if(Icon == 1) {
-              Cintu = xu1 - (Gradu * zu1);
-// -------------------------------------------------------------------
-// Sanity check: Residuals in layers used to define the line should
-// be zero.
-// -------------------------------------------------------------------
-              float Zwire1u = Zw[0];
-              float Xwire1u = Xw[0];
-              float Zint1u  = 0.0;
-              float Xint1u  = 0.0;   
-              straw_ClosestPoint(Gradu,Cintu,Zwire1u,Xwire1u,Zint1u,Xint1u);
-              float Zwire2u = Zw[1];
-              float Xwire2u = Xw[1];
-              float Zint2u  = 0.0;
-              float Xint2u  = 0.0;
-              straw_ClosestPoint(Gradu,Cintu,Zwire2u,Xwire2u,Zint2u,Xint2u);
-              float Zpt1u   = 0.0;
-              float Xpt1u   = 0.0;
-              straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt1u,Xpt1u);
-              float Res1u = sqrt((Zpt1u - Zint1u)*(Zpt1u - Zint1u) + (Xpt1u - Xint1u)*(Xpt1u - Xint1u));
-              Res1u = Res1u*10000.0;
-              float Zpt2u = 0.0;
-              float Xpt2u = 0.0;
-              straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt2u,Xpt2u);
-              float Res2u = sqrt((Zpt2u - Zint2u)*(Zpt2u - Zint2u) + (Xpt2u - Xint2u)*(Xpt2u - Xint2u));
-              Res2u = Res2u*10000.0;
-// -------------------------------------------------------------------
-// Find closest point to this line on the hit cell in layer 3 or 4 
-// We need to swap the extrapolated tangent into the v frame from the
-// u frame:
-// -------------------------------------------------------------------
-              zv1 = zu1;
-              u2xy(xu1,yu1,xx1,yy1);
-              xy2v(xx1,yy1,xv1,yv1);
-//
-              zv2 = zu2;
-              u2xy(xu2,yu2,xx2,yy2);
-              xy2v(xx2,yy2,xv2,yv2);
-//
-              Gradv =(xv2 - xv1)/(zv2 - zv1);
-              Cintv = xv1 - (Gradv * zv1); 
-              float Zwire3v = Zw[2];
-              float Xwire3v = Xw[2];
-              float Zint3v  = 0.0;
-              float Xint3v  = 0.0;
-              straw_ClosestPoint(Gradv,Cintv,Zwire3v,Xwire3v,Zint3v,Xint3v);
-              float Dist3v = sqrt((Zwire3v-Zint3v)*(Zwire3v-Zint3v) + (Xwire3v-Xint3v)*(Xwire3v-Xint3v));
-              int Icon2 = 1;
-              if(Dist3v > 1.2*Size[2]) {
-                                  Resols[Irloc-1] = 99999.9;
-                                  Icon2 = 0;
-              }
-// -------------------------------------------------------------------
-// Extrapolated line passes through the hit cell in layer 3 or 4:
-// Calculate the residuals:
-// -------------------------------------------------------------------
-              if(Icon2 == 1) {
-                float Zpt3v = 0.0;
-                float Xpt3v = 0.0;
-                if(iStraws[2] > 0) {
-                  straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3v,Xpt3v);
-                }
-                if(iStraws[3] > 0) {
-                  straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt3v,Xpt3v);
-                }
-                float Res3v = sqrt((Zpt3v - Zint3v)*(Zpt3v - Zint3v) + (Xpt3v - Xint3v)*(Xpt3v - Xint3v));
-                Res3v = Res3v*10000.0;
-                Resols[Irloc-1] = Res3v;
-// -------------------------------------------------------------------
-// We now need to decide if the layer that didnt have a hit is
-// compatible with the track having gone through a cell wall.
-// -------------------------------------------------------------------
-                IsWall[Irloc-1] = 1;
-                int Istart = 0;
-                int Iend   = 0;
-                if(iStraws[2] > 0) {
-// ------------------
-// No hit in Layer 4:
-// ------------------
-                  Istart = iStraws[2] - 3;  
-                  if(Istart < 1) {
-                               Istart = 1;
-                  }
-                  Iend = iStraws[2] + 3;
-                  if(Iend > 32) {
-                              Iend = 32;
-                  }
-                  for(int Is=Istart; Is<=Iend; Is++) {
-                     float Zwirev = Xzaty[0][Is-1][3][Nmod-1];
-                     float Xwirev = Xzaty[1][Is-1][3][Nmod-1];
-                     float Zintv = 0.0;
-                     float Xintv = 0.0;
-                     straw_ClosestPoint(Gradv,Cintv,Zwirev,Xwirev,Zintv,Xintv);
-                     float Distv = sqrt((Zwirev-Zintv)*(Zwirev-Zintv) + (Xwirev-Xintv)*(Xwirev-Xintv));
-                     if(Distv < 0.25) {
-                       IsWall[Irloc-1] = 0;
-                     }
-                  }
-                }
-//
-                if(iStraws[3] > 0) {
-// ------------------
-// No hit in Layer 3:
-// ------------------     
-                  Istart = iStraws[3] - 3;
-                  if(Istart < 1) {
-                               Istart = 1;
-                  }
-                  Iend = iStraws[3] + 3;
-                  if(Iend > 32) {
-                              Iend = 32;
-                  }
-                  for(int Is=Istart; Is<=Iend; Is++) {
-                     float Zwirevv = Xzaty[0][Is-1][2][Nmod-1];
-                     float Xwirevv = Xzaty[1][Is-1][2][Nmod-1];
-                     float Zintvv  = 0.0;
-                     float Xintvv  = 0.0;
-                     straw_ClosestPoint(Gradv,Cintv,Zwirevv,Xwirevv,Zintvv,Xintvv);
-                     float Distvv = sqrt((Zwirevv-Zintvv)*(Zwirevv-Zintvv) + (Xwirevv-Xintvv)*(Xwirevv-Xintvv));
-                     if(Distvv < 0.25) {
-                       IsWall[Irloc-1] = 0;
-                     }
-                  }
-                }
-              }
-            }
-         }
-      }
-// ------------------------------------------------------------------
-// We now have the residual information for extrapolation of each
-// of the 4 tangents at each test Y position ... make a list of the
-// acceptable possibilities.
-// ------------------------------------------------------------------
-      int Locbst   = 0;
-      float Resbst = 99999.9;
-// ------------------------------------------------------------------
-// Keep solution with smallest Residual that is most 
-// consistent with track going straight through.
-// ------------------------------------------------------------------
-      for(int isol=1; isol<=400; isol++) {
-         float Resid = Resols[isol-1];
-         float Angte = Angloc[isol-1];
-         if(IsWall[isol-1] == 1) {
-           float Angdif = fabs(Angte - Angexp);
-           if(Angdif > 180.0) {
-             Angdif = 360.0 - Angdif;
-           }
-           if(Angdif < 5.0) {
-             if(Resid < Resbst) {
-                        Resbst = Resid;
-                        Locbst  = isol;
-             }
-           }
-         } 
-      }
-//
-      if(Resbst > 1000.0) {
-                          return;
-      }
-// ------------------------------------------------------------------
-// Refit the chosen solution:
-// ------------------------------------------------------------------
-      int Iybest  = int((Locbst - 1)/4) + 1;
-      int Itnbst  = Locbst - ((Iybest-1)*4);
-      float Ybest  = float(Iybest)/10.0;
-      Ybest = Ybest - 4.55;
-//
-	getEndsLoop(Nmod, Ybest, NULL, 2);
-//
-      Zw[0] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-      Xw[0] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-      Dr[0] = Hits[iStraws[0]-1][0][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-      //straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-      //straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-      yu1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      Zw[1] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-      Xw[1] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-      Dr[1] = Hits[iStraws[1]-1][1][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-      //straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-      //straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-      yu2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      if(iStraws[2] > 0) {
-        Zw[2] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-        Xw[2] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-        Dr[2] = Hits[iStraws[2]-1][2][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-      //  straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-      //  straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-        yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-      }
-      if(iStraws[3] > 0) {
-        Zw[2] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-        Xw[2] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-        Dr[2] = Hits[iStraws[3]-1][3][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-      //  straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-      //  straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-        yv3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-      }
-//
-      int iflagb = 0;
-      straw_CommonTangent(Nmod,iStraws[0],Layer1,iStraws[1],Layer2,Itnbst,zu1,xu1,zu2,xu2,iflagb);
-      if(fabs(zu2-zu1) > 1.0e-6) {
-                                 Gradu = (xu2 - xu1)/(zu2 - zu1);
-      }
-      if(fabs(zu2-zu1) <= 1.0e-6) {
-                                  return;
-      }
-      Cintu = xu1 - (Gradu * zu1);
-      float Zwire1ub = Zw[0];
-      float Xwire1ub = Xw[0];
-      float Zint1ub  = 0.0;
-      float Xint1ub  = 0.0;
-      straw_ClosestPoint(Gradu,Cintu,Zwire1ub,Xwire1ub,Zint1ub,Xint1ub);
-      float Dist1ub = sqrt((Zwire1ub-Zint1ub)*(Zwire1ub-Zint1ub) + (Xwire1ub-Xint1ub)*(Xwire1ub-Xint1ub));
-      if(Dist1ub > 1.2*Size[0]) {
-                                return;
-      }
-      float Zpt1ub = 0.0;
-      float Xpt1ub = 0.0;
-      straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt1ub,Xpt1ub);
-//
-      float Zwire2ub = Zw[1];
-      float Xwire2ub = Xw[1];
-      float Zint2ub  = 0.0;
-      float Xint2ub  = 0.0;
-      straw_ClosestPoint(Gradu,Cintu,Zwire2ub,Xwire2ub,Zint2ub,Xint2ub);
-      float Dist2ub = sqrt((Zwire2ub-Zint2ub)*(Zwire2ub-Zint2ub) + (Xwire2ub-Xint2ub)*(Xwire2ub-Xint2ub));
-      if(Dist2ub > 1.2*Size[1]) {
-                                return;
-      }
-      float Zpt2ub = 0.0;
-      float Xpt2ub = 0.0;
-      straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt2ub,Xpt2ub);
-//
-      zv1 = zu1;
-      u2xy(xu1,yu1,xx1,yy1);
-      xy2v(xx1,yy1,xv1,yv1);
-//
-      zv2 = zu2;
-      u2xy(xu2,yu2,xx2,yy2);
-      xy2v(xx2,yy2,xv2,yv2);
-//
-      if(fabs(zv2-zv1) > 1.0e-6) {
-                                 Gradv =(xv2 - xv1)/(zv2 - zv1);
-      }
-      if(fabs(zv2-zv1) <= 1.0e-6) {
-                                  return;
-      }
-      Cintv = xv1 - (Gradv * zv1);
-//
-      float Zwire3vb = Zw[2];
-      float Xwire3vb = Xw[2];
-      float Zint3vb = 0.0;
-      float Xint3vb = 0.0;
-      straw_ClosestPoint(Gradv,Cintv,Zwire3vb,Xwire3vb,Zint3vb,Xint3vb);
-      float Dist3vb = sqrt((Zwire3vb-Zint3vb)*(Zwire3vb-Zint3vb) + (Xwire3vb-Xint3vb)*(Xwire3vb-Xint3vb));
-      if(Dist3vb > 1.2*Size[2]) {
-                                return;
-      }
-      float Zpt3vb = 0.0;
-      float Xpt3vb = 0.0;
-      if(iStraws[2] > 0) {
-        straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3vb,Xpt3vb);
-      }
-      if(iStraws[3] > 0) {
-        straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt3vb,Xpt3vb);
-      }
-      float Res1ub = sqrt((Zpt1ub - Zint1ub)*(Zpt1ub - Zint1ub) + (Xpt1ub - Xint1ub)*(Xpt1ub - Xint1ub));
-      Res1ub = Res1ub*10000.0;
-      float Res2ub = sqrt((Zpt2ub - Zint2ub)*(Zpt2ub - Zint2ub) + (Xpt2ub - Xint2ub)*(Xpt2ub - Xint2ub));
-      Res2ub = Res2ub*10000.0;
-      float Res3vb = sqrt((Zpt3vb - Zint3vb)*(Zpt3vb - Zint3vb) + (Xpt3vb - Xint3vb)*(Xpt3vb - Xint3vb));
-      Res3vb = Res3vb*10000.0;
-// ---------------------------------------------------------------------
-// Convert all points back into xy frame for fitting:
-// ---------------------------------------------------------------------
-      float Zpt1b = Zpt1ub;
-      float Xpt1b = 0.0;
-      u2xy(Xpt1ub,yu1,Xpt1b,yy1);
-//
-      float Zpt2b = Zpt2ub;
-      float Xpt2b = 0.0;
-      u2xy(Xpt2ub,yu2,Xpt2b,yy2);
-//
-      float Zpt3b = Zpt3vb;
-      float Xpt3b = 0.0;
-      v2xy(Xpt3vb,yv3,Xpt3b,yy3);
-//
-      straw_FillArray(iStraws[0],Layer1,Nmod,Zpt1b,Xpt1b);
-      straw_FillArray(iStraws[1],Layer2,Nmod,Zpt2b,Xpt2b);
-      if(iStraws[2] > 0) {
-        straw_FillArray(iStraws[2],Layer3,Nmod,Zpt3b,Xpt3b);
-      }
-      if(iStraws[3] > 0) {
-        straw_FillArray(iStraws[3],Layer4,Nmod,Zpt3b,Xpt3b);
-      }
-      Yhits[iStraws[0]-1][Layer1-1][Nmod-1] = Ybest;
-      Yhits[iStraws[1]-1][Layer2-1][Nmod-1] = Ybest;
-      if(iStraws[2] > 0) {
-        Yhits[iStraws[2]-1][Layer3-1][Nmod-1] = Ybest;
-      }
-      if(iStraws[3] > 0) {
-        Yhits[iStraws[3]-1][Layer4-1][Nmod-1] = Ybest;
-      }
-      Mask[iStraws[0]-1][Layer1-1][Nmod-1] = 1;
-      Mask[iStraws[1]-1][Layer2-1][Nmod-1] = 1;
-      if(iStraws[2] > 0) {
-        Mask[iStraws[2]-1][Layer3-1][Nmod-1] = 1;
-      }
-      if(iStraws[3] > 0) {
-        Mask[iStraws[3]-1][Layer4-1][Nmod-1] = 1;
-      }
-      Trkin2[0][Nmod-1] = float(iStraws[0]);
-      Trkin2[1][Nmod-1] = float(iStraws[1]);
-      Trkin2[2][Nmod-1] = float(iStraws[2]);
-      Trkin2[3][Nmod-1] = float(iStraws[3]);
-//
-      Trkin2[4][Nmod-1] = Hits[iStraws[0]-1][Layer1-1][Nmod-1];
-      Trkin2[5][Nmod-1] = Zpt1b;
-      Trkin2[6][Nmod-1] = Xpt1b;
-      Trkin2[7][Nmod-1] = Ybest;
-      float Zwire1b = Zwire1ub;
-      float Xwire1b = 0.0;
-      u2xy(Xwire1ub,yu1,Xwire1b,yy1);
-      Trkin2[8][Nmod-1]  = Zwire1b;
-      Trkin2[9][Nmod-1]  = Xwire1b;
-      float Zint1b = Zint1ub;
-      float Xint1b = 0.0;
-      u2xy(Xint1ub,yu1,Xint1b,yy1);
-      Trkin2[10][Nmod-1] = Zint1b;
-      Trkin2[11][Nmod-1] = Xint1b;
-//
-      Trkin2[12][Nmod-1] = Hits[iStraws[1]-1][Layer2-1][Nmod-1];
-      Trkin2[13][Nmod-1] = Zpt2b;
-      Trkin2[14][Nmod-1] = Xpt2b;
-      Trkin2[15][Nmod-1] = Ybest;
-      float Zwire2b = Zwire2ub;
-      float Xwire2b = 0.0;
-      u2xy(Xwire2ub,yu2,Xwire2b,yy2);
-      float Zint2b = Zint2ub;
-      float Xint2b = 0.0;
-      u2xy(Xint2ub,yu2,Xint2b,yy2);
-      Trkin2[16][Nmod-1] = Zwire2b;
-      Trkin2[17][Nmod-1] = Xwire2b;
-      Trkin2[18][Nmod-1] = Zint2b;
-      Trkin2[19][Nmod-1] = Xint2b;
-      float Zwire3b = 0.0;
-      float Xwire3b = 0.0;
-      float Zint3b  = 0.0;
-      float Xint3b  = 0.0;
-      if(iStraws[2] > 0) {
-        Trkin2[20][Nmod-1] = Hits[iStraws[2]-1][Layer3-1][Nmod-1];
-        Trkin2[21][Nmod-1] = Zpt3b;
-        Trkin2[22][Nmod-1] = Xpt3b;
-        Trkin2[23][Nmod-1] = Ybest;
-        Zwire3b = Zwire3vb;
-        Xwire3b = 0.0;
-        v2xy(Xwire3vb,yv3,Xwire3b,yy3);
-        Zint3b = Zint3vb;
-        Xint3b = 0.0;
-        v2xy(Xint3vb,yv3,Xint3b,yy3);
-        Trkin2[24][Nmod-1] = Zwire3b;
-        Trkin2[25][Nmod-1] = Xwire3b;
-        Trkin2[26][Nmod-1] = Zint3b;
-        Trkin2[27][Nmod-1] = Xint3b;
-      }
-      if(iStraws[3] > 0) {
-        Trkin2[28][Nmod-1] = Hits[iStraws[3]-1][Layer4-1][Nmod-1];
-        Trkin2[29][Nmod-1] = Zpt3b;
-        Trkin2[30][Nmod-1] = Xpt3b;
-        Trkin2[31][Nmod-1] = Ybest;
-        Zwire3b = Zwire3vb;
-        Xwire3b = 0.0;
-        v2xy(Xwire3vb,yv3,Xwire3b,yy3);
-        Zint3b = Zint3vb;
-        Xint3b = 0.0;
-        v2xy(Xint3vb,yv3,Xint3b,yy3);
-        Trkin2[32][Nmod-1] = Zwire3b;
-        Trkin2[33][Nmod-1] = Xwire3b;
-        Trkin2[34][Nmod-1] = Zint3b;
-        Trkin2[35][Nmod-1] = Xint3b;
-      }
-// ------------------------------------------------------------------
-// Finally make the fitted TE from the obtained space points.
-// Must set up xzaty in xy frame for this:
-// ------------------------------------------------------------------
-	getEndsLoop(Nmod, Ybest, iStraws, 3);
-//
-      int Ntofit = Nposte;
-      for(int ifit=1; ifit<=Nposte; ifit++) {
-         Xptsfit[ifit-1] = Xypost[1][ifit-1][Nmod-1];
-         Zptsfit[ifit-1] = Xypost[0][ifit-1][Nmod-1];
-      }
-      float Grfit = 0.0;
-      float Cfit  = 0.0;
-      Linfit(Zptsfit,Xptsfit,Ntofit,Grfit,Cfit);
-      float zte1 = 0.0;
-      float xte1 = 0.0;
-      float zte2 = 0.0;
-      float xte2 = 0.0;
-      straw_ClosestPoint(Grfit,Cfit,Zpt1b,Xpt1b,zte1,xte1);
-      straw_ClosestPoint(Grfit,Cfit,Zpt3b,Xpt3b,zte2,xte2);
-//
-      float xdiff  = xte2 - xte1;
-      float zdiff  = zte2 - zte1;
-      float Phizx  = phi_arctan(xdiff,zdiff);
-      float Phizxd = Phizx*180.0/Pibk;
-      if(Phizxd > 180.0) {
-                         Phizxd = Phizxd - 360.0;
-      }
-// --------------------------------------------
-// Turn into milliradians:
-// --------------------------------------------
-      float Phizxmr = Phizxd*1000.0*Pibk/180.0;
-//
-      Trkin2[36][Nmod-1] = zte1;
-      Trkin2[37][Nmod-1] = xte1;
-      Trkin2[38][Nmod-1] = zte2;
-      Trkin2[39][Nmod-1] = xte2;
-      float Grrr = (xte2 - xte1) / (zte2 - zte1);
-      float Ctrk = xte1 - (Grrr * zte1);
-      Trkin2[40][Nmod-1] = Grrr;
-      Trkin2[41][Nmod-1] = Ctrk;
-// ------------------------------------------------------------------
-// Finally store residuals to fitted track.
-// ------------------------------------------------------------------
-      float Zintt1 = 0.0;
-      float Xintt1 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire1b,Xwire1b,Zintt1,Xintt1);
-      float Zptt1  = 0.0;
-      float Xptt1  = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[0],Layer1,Nmod,Zptt1,Xptt1);
-      float Zintt2 = 0.0;
-      float Xintt2 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire2b,Xwire2b,Zintt2,Xintt2);
-      float Zptt2  = 0.0;
-      float Xptt2  = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[1],Layer2,Nmod,Zptt2,Xptt2);
-      float Zintt3 = 0.0;
-      float Xintt3 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire3b,Xwire3b,Zintt3,Xintt3);
-      float Zptt3  = 0.0;
-      float Xptt3  = 0.0;
-      if(iStraws[2] > 0) {
-        straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[2],Layer3,Nmod,Zptt3,Xptt3);
-      }
-      if(iStraws[3] > 0) {
-        straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[3],Layer4,Nmod,Zptt3,Xptt3);
-      }
-// ------------------------------------------------------------------
-// (Zpt1,Xpt1) etc are the space points on the drift circles that 
-// have been fitted to make the track.
-// (Zptt1,Xptt1) are the closest points on the drift circles to the
-// fitted track...
-// ------------------------------------------------------------------
-      float Rest1 = sqrt((Zptt1 - Zintt1)*(Zptt1 - Zintt1) + (Xptt1 - Xintt1)*(Xptt1 - Xintt1));
-      Rest1 = Rest1*10000.0;
-      float Rest2 = sqrt((Zptt2 - Zintt2)*(Zptt2 - Zintt2) + (Xptt2 - Xintt2)*(Xptt2 - Xintt2));
-      Rest2 = Rest2*10000.0;
-      float Rest3 = sqrt((Zptt3 - Zintt3)*(Zptt3 - Zintt3) + (Xptt3 - Xintt3)*(Xptt3 - Xintt3));
-      Rest3 = Rest3*10000.0;
-      Trkin2[42][Nmod-1] = Rest1;
-      Trkin2[43][Nmod-1] = Rest2;
-      if(iStraws[2] > 0) {
-        Trkin2[44][Nmod-1] = Rest3;
-      }
-      if(iStraws[3] > 0) {
-        Trkin2[45][Nmod-1] = Rest3;
-      }
-      Trkin2[46][Nmod-1] = Zptt1;
-      Trkin2[47][Nmod-1] = Xptt1;
-      Trkin2[48][Nmod-1] = Zptt2;
-      Trkin2[49][Nmod-1] = Xptt2;
-      if(iStraws[2] > 0) {
-        Trkin2[50][Nmod-1] = Zptt3;
-        Trkin2[51][Nmod-1] = Xptt3;
-      }
-      if(iStraws[3] > 0) {
-        Trkin2[52][Nmod-1] = Zptt3;
-        Trkin2[53][Nmod-1] = Xptt3;
-      }
-      Zxhit[0][iStraws[0]-1][Layer1-1][Nmod-1] = Zptt1;
-      Zxhit[1][iStraws[0]-1][Layer1-1][Nmod-1] = Xptt1;
-      Zxhit[0][iStraws[1]-1][Layer2-1][Nmod-1] = Zptt2;
-      Zxhit[1][iStraws[1]-1][Layer2-1][Nmod-1] = Xptt2;
-      if(iStraws[2] > 0) {
-        Zxhit[0][iStraws[2]-1][Layer3-1][Nmod-1] = Zptt3;
-        Zxhit[1][iStraws[2]-1][Layer3-1][Nmod-1] = Xptt3;
-      }
-      if(iStraws[3] > 0) {
-        Zxhit[0][iStraws[3]-1][Layer4-1][Nmod-1] = Zptt3;
-        Zxhit[1][iStraws[3]-1][Layer4-1][Nmod-1] = Xptt3;
-      }
-}
-// --------------------------------------------------------------
-void Strte3(int Nmod, int iStraws[LAYERS]) {
-// ------------------------------------------------------------------
-// Finds a TE in a Straw Collection where hits exist in Layers 3
-// and 4 and either layer 1 Or layer 2. 
-// ------------------------------------------------------------------
-      float Xptsfit[4];
-      float Zptsfit[4];
-//
-      float Zw[3];
-      float Xw[3];
-      float Dr[3];
-      float Resols[400];
-      float Angloc[400];
-      int   IsWall[400];
-//
-      float Pibk  = 3.1415926535;
-      float Twopi = 2.0*Pibk;
-      float Piby2 = Pibk/2.0;
-      float Ysize = 0.1;
-      float Ystep = 10.0/Ysize;
-      float Yloop = 4.0 * Ystep;
-      int Kystep = round(Ystep);
-      int Kyloop = round(Yloop);
-//
-      for(int i=1; i<=Kyloop; i++) {
-         Resols[i-1] = 9999999.0;
-         Angloc[i-1] = 9999999.9;
-         IsWall[i-1] = 0;
-      }
-// ------------------------------------------------------------------
-// Declare some variables for later use.
-// ------------------------------------------------------------------
-      straw.Xbot = 0.0;
-      straw.Ybot = 0.0;
-      straw.Zbot = 0.0;
-      straw.Xtop = 0.0;
-      straw.Ytop = 0.0;
-      straw.Ztop = 0.0;
-      float xx1  = 0.0;
-      float xx2  = 0.0;
-      float xx3  = 0.0;
-      float xx4  = 0.0;
-      float zz1  = 0.0;
-      float zz2  = 0.0;
-      float zz3  = 0.0;
-      float zz4  = 0.0;
-      float yy1  = 0.0;
-      float yy2  = 0.0;
-      float yy3  = 0.0;
-      float yy4  = 0.0;
-      float xu1  = 0.0;
-      float xu2  = 0.0;
-      float xu3  = 0.0;
-      float xu4  = 0.0;
-      float zu1  = 0.0;
-      float zu2  = 0.0;
-      float zu3  = 0.0;
-      float zu4  = 0.0;
-      float yu1  = 0.0;
-      float yu2  = 0.0;
-      float yu3  = 0.0;
-      float yu4  = 0.0;
-//
-      float Gradu = 0.0;
-      float Cintu = 0.0;
-      float Gradv = 0.0;
-      float Cintv = 0.0;
-      float xv1  = 0.0;
-      float xv2  = 0.0;
-      float xv3  = 0.0;
-      float xv4  = 0.0;
-      float zv1  = 0.0;
-      float zv2  = 0.0;
-      float zv3  = 0.0;
-      float zv4  = 0.0;
-      float yv1  = 0.0;
-      float yv2  = 0.0;
-      float yv3  = 0.0;
-      float yv4  = 0.0;
-//
-      int Layer1 = 1;
-      int Layer2 = 2;
-      int Layer3 = 3;
-      int Layer4 = 4;
-      float Angexp = 0.0;
-// ------------------------------------------------------------------
-// Do track finding at various positions vertically and minimise the
-// residuals:
-// ------------------------------------------------------------------
-      for(int Iybin=1; Iybin<=91; Iybin++) {
-         float Ytest = float(Iybin)/10.0;
-         Ytest = Ytest - 4.55;
-	getEndsLoop(Nmod, Ytest, NULL, 1);
-// ------------------------------------------------------------------
-// Have found the hit straws in layers 3 and 4.
-// Find the 4 possible tangents to these two drift circles.
-// Extrapolate back to layers 2 and 1 ...
-// ------------------------------------------------------------------
-         Zw[0] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-         Xw[0] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-         Dr[0] = Hits[iStraws[2]-1][2][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-      //   straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-      //   straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-         yv1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-//
-         Zw[1] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-         Xw[1] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-         Dr[1] = Hits[iStraws[3]-1][3][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-      //   straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-      //   straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-         yv2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-//
-         if(iStraws[0] > 0) {
-           Zw[2] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-           Xw[2] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-           Dr[2] = Hits[iStraws[0]-1][0][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-      //     straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-      //     straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-           yu3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-         }
-//
-         if(iStraws[1] > 0) {
-           Zw[2] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-           Xw[2] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-           Dr[2] = Hits[iStraws[1]-1][1][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-      //     straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-      //     straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-           yu3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ytest -(-4.55))/(9.1));
-         }
-//
-         for(int itan=1; itan<=4; itan++) {
-// ------------------------------------------------------------------
-// Routine straw_CommonTangent returns the Z and X points of the common
-// tangents to the drift circles for each of the 4 cases in turn.
-// ------------------------------------------------------------------
-//   Itan = 1 MEANS OUTER EDGE TANGENT , RHS OF DRIFT CIRCLES
-//        = 2        ''    ''     ''     LHS  ''  ''     ''
-//        = 3       CROSSED TANGENT , BOTTOM RHS TO TOP LHS
-//        = 4           ''     ''       ''   LHS        RHS
-// ------------------------------------------------------------------
-            int iflag = 0;
-            straw_CommonTangent(Nmod,iStraws[2],Layer3,iStraws[3],Layer4,itan,zv1,xv1,zv2,xv2,iflag);
-            int Irloc = (Iybin-1)*4 + itan;
-            int Icon = 1;
-            if(fabs(zv2-zv1) > 1.0e-6) {
-              Gradv = (xv2 - xv1) / (zv2 - zv1);
-              v2xy(xv1,yv1,xx1,yy1);
-              v2xy(xv2,yv2,xx2,yy2);
-              zz1 = zv1;
-              zz2 = zv2;
-              Angloc[Irloc-1] = phi_arctan((xx2-xx1),(zz2-zz1));
-              if(Angloc[Irloc-1] < 0.0) {
-                Angloc[Irloc-1] = Angloc[Irloc-1] + Twopi;
-              }
-              Angloc[Irloc-1] = Angloc[Irloc-1]*180.0/Pibk;
-              Icon = 1;
-            } 
-            if(fabs(zv2-zv1) <= 1.0e-6) {
-              Resols[Irloc-1] = 99999.9;
-              Icon = 0;
-            }
-            if(Icon == 1) {
-              Cintv = xv1 - (Gradv * zv1);
-// -------------------------------------------------------------------
-// Sanity check: Residuals in layers used to define the line should
-// be zero.
-// -------------------------------------------------------------------
-              float Zwire3v = Zw[0];
-              float Xwire3v = Xw[0];
-              float Zint3v = 0.0;
-              float Xint3v = 0.0;
-              straw_ClosestPoint(Gradv,Cintv,Zwire3v,Xwire3v,Zint3v,Xint3v);
-              float Zwire4v = Zw[1];
-              float Xwire4v = Xw[1];
-              float Zint4v = 0.0;
-              float Xint4v = 0.0;
-              straw_ClosestPoint(Gradv,Cintv,Zwire4v,Xwire4v,Zint4v,Xint4v);
-              float Zpt3v = 0.0;
-              float Xpt3v = 0.0;
-              straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3v,Xpt3v);
-              float Res3v = sqrt((Zpt3v - Zint3v)*(Zpt3v - Zint3v) + (Xpt3v - Xint3v)*(Xpt3v - Xint3v));
-              Res3v = Res3v*10000.0;
-              float Zpt4v = 0.0;
-              float Xpt4v = 0.0;
-              straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt4v,Xpt4v);
-              float Res4v = sqrt((Zpt4v - Zint4v)*(Zpt4v - Zint4v) + (Xpt4v - Xint4v)*(Xpt4v - Xint4v));
-              Res4v = Res4v*10000.0;
-// -------------------------------------------------------------------
-// Find closest point to this line on the hit cell in layer 2 or 1 
-// We need to swap the extrapolated tangent into the u frame from the
-// v frame:
-// -------------------------------------------------------------------
-              zu1 = zv1;
-              v2xy(xv1,yv1,xx1,yy1);
-              xy2u(xx1,yy1,xu1,yu1);
-//
-              zu2 = zv2;
-              v2xy(xv2,yv2,xx2,yy2);
-              xy2u(xx2,yy2,xu2,yu2);
-//
-              Gradu =(xu2 - xu1)/(zu2 - zu1);
-              Cintu = xu1 - (Gradu * zu1); 
-//
-              float Zwire21u = Zw[2];
-              float Xwire21u = Xw[2];
-              float Zint21u  = 0.0;
-              float Xint21u  = 0.0;
-              straw_ClosestPoint(Gradu,Cintu,Zwire21u,Xwire21u,Zint21u,Xint21u);
-              float Dist21u = sqrt((Zwire21u-Zint21u)*(Zwire21u-Zint21u) + (Xwire21u-Xint21u)*(Xwire21u-Xint21u));
-              int Icon2 = 1;
-              if(Dist21u > 1.2*Size[1]) {
-                             Resols[Irloc-1] = 99999.9;
-                             Icon2 = 0;
-              }
-// -------------------------------------------------------------------
-// Extrapolated line passes through the hit cell in layer 2 or 1:
-// Calculate the residuals:
-// -------------------------------------------------------------------
-              if(Icon2 == 1) {
-                float Zpt21u = 0.0;
-                float Xpt21u = 0.0;
-                if(iStraws[1] > 0) {
-                  straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt21u,Xpt21u);
-                }
-                if(iStraws[0] > 0) {
-                  straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt21u,Xpt21u);
-                }
-                float Res21u = sqrt((Zpt21u - Zint21u)*(Zpt21u - Zint21u) + (Xpt21u - Xint21u)*(Xpt21u - Xint21u));
-                Res21u = Res21u*10000.0;
-                Resols[Irloc-1] = Res21u;
-// -------------------------------------------------------------------
-// We now need to decide if the layer that didnt have a hit is
-// compatible with the track having gone through a cell wall.
-// -------------------------------------------------------------------
-                IsWall[Irloc-1] = 1;
-                int Istart = 0;
-                int Iend   = 0;
-                if(iStraws[1] > 0) {
-// ------------------
-// No hit in Layer 1:
-// ------------------
-                  Istart = iStraws[1] - 3;  
-                  if(Istart < 1) {
-                           Istart = 1;
-                  }
-                  Iend = iStraws[1] + 3;
-                  if(Iend > 32) {
-                           Iend = 32;
-                  }
-                  for(int is=Istart; is<=Iend; is++) {
-                     float Zwireu = Xzaty[0][is-1][0][Nmod-1];
-                     float Xwireu = Xzaty[1][is-1][0][Nmod-1];
-                     float Zintu = 0.0;
-                     float Xintu = 0.0;
-                     straw_ClosestPoint(Gradu,Cintu,Zwireu,Xwireu,Zintu,Xintu);
-                     float Distu = sqrt((Zwireu-Zintu)*(Zwireu-Zintu) + (Xwireu-Xintu)*(Xwireu-Xintu));
-                     if(Distu < 0.25) {
-                       IsWall[Irloc-1] = 0;
-                     }
-                  }
-                }
-//
-                if(iStraws[0] > 0) {
-// ------------------
-// No hit in Layer 2:
-// ------------------     
-                  Istart = iStraws[0] - 3;
-                  if(Istart < 1) {
-                                 Istart = 1;
-                  }
-                  Iend = iStraws[0] + 3;
-                  if(Iend > 32) {
-                                Iend = 32;
-                  }
-                  for(int is=Istart; is<=Iend; is++) {
-                     float Zwireuu = Xzaty[0][is-1][1][Nmod-1];
-                     float Xwireuu = Xzaty[1][is-1][1][Nmod-1];
-                     float Zintuu = 0.0;
-                     float Xintuu = 0.0;
-                     straw_ClosestPoint(Gradu,Cintu,Zwireuu,Xwireuu,Zintuu,Xintuu);
-                     float Distuu = sqrt((Zwireuu-Zintuu)*(Zwireuu-Zintuu) + (Xwireuu-Xintuu)*(Xwireuu-Xintuu));
-                     if(Distuu < 0.25) {
-                       IsWall[Irloc-1] = 0;
-                     }
-                  }
-                }
-              }
-            }
-         }
-      }
-// ------------------------------------------------------------------
-// We now have the residual information for extrapolation of each
-// of the 4 tangents at each test Y position ... choose the best.
-// ------------------------------------------------------------------
-      int Locbst = 0;
-      float Resbst = 99999.9;
-      for(int isol=1; isol<=400; isol++) {
-         float Resid = Resols[isol-1];
-         float Angte = Angloc[isol-1];
-         if(IsWall[isol-1] == 1) {
-           float Angdif = fabs(Angte - Angexp);
-           if(Angdif > 180.0) {
-             Angdif = 360.0 - Angdif;
-           }
-           if(Angdif < 5.0) {
-             if(Resid < Resbst) {
-                        Resbst = Resid;
-                        Locbst  = isol;
-             }
-           } 
-         }
-      }   
-//
-      if(Resbst > 1000.0) {
-                          return;
-      }
-// ------------------------------------------------------------------
-// Best chosen .... now refit it:
-// ------------------------------------------------------------------
-      int Iybest  = int((Locbst-1)/4) + 1;
-      int Itnbst  = Locbst - ((Iybest-1)*4);
-      float Ybest = float(Iybest)/10.0;
-      Ybest = Ybest - 4.55;
-//
-	getEndsLoop(Nmod, Ybest, NULL, 2);
-//
-      Zw[0] = Xzaty[0][iStraws[2]-1][2][Nmod-1];
-      Xw[0] = Xzaty[1][iStraws[2]-1][2][Nmod-1];
-      Dr[0] = Hits[iStraws[2]-1][2][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][2][iStraws[2]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][2][iStraws[2]-1][1][1];
-      //straw.Ybot  = Xzstrav[1][iStraws[2]-1][2][Nmod-1];
-      //straw.Ytop  = Xzstrav[4][iStraws[2]-1][2][Nmod-1];
-      yv1   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      Zw[1] = Xzaty[0][iStraws[3]-1][3][Nmod-1];
-      Xw[1] = Xzaty[1][iStraws[3]-1][3][Nmod-1];
-      Dr[1] = Hits[iStraws[3]-1][3][Nmod-1];
-      straw.Ybot = strawGeom_v[Nmod-1][3][iStraws[3]-1][0][1];
-      straw.Ytop = strawGeom_v[Nmod-1][3][iStraws[3]-1][1][1];
-      //straw.Ybot  = Xzstrav[1][iStraws[3]-1][3][Nmod-1];
-      //straw.Ytop  = Xzstrav[4][iStraws[3]-1][3][Nmod-1];
-      yv2   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-//
-      if(iStraws[0] > 0) {
-        Zw[2] = Xzaty[0][iStraws[0]-1][0][Nmod-1];
-        Xw[2] = Xzaty[1][iStraws[0]-1][0][Nmod-1];
-        Dr[2] = Hits[iStraws[0]-1][0][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][0][iStraws[0]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][0][iStraws[0]-1][1][1];
-      //  straw.Ybot  = Xzstrau[1][iStraws[0]-1][0][Nmod-1];
-      //  straw.Ytop  = Xzstrau[4][iStraws[0]-1][0][Nmod-1];
-        yu3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-      }
-      if(iStraws[1] > 0) {
-        Zw[2] = Xzaty[0][iStraws[1]-1][1][Nmod-1];
-        Xw[2] = Xzaty[1][iStraws[1]-1][1][Nmod-1];
-        Dr[2] = Hits[iStraws[1]-1][1][Nmod-1];
-      straw.Ybot = strawGeom_u[Nmod-1][1][iStraws[1]-1][0][1];
-      straw.Ytop = strawGeom_u[Nmod-1][1][iStraws[1]-1][1][1];
-      //  straw.Ybot  = Xzstrau[1][iStraws[1]-1][1][Nmod-1];
-      //  straw.Ytop  = Xzstrau[4][iStraws[1]-1][1][Nmod-1];
-        yu3   = straw.Ybot + ((straw.Ytop-straw.Ybot)*(Ybest -(-4.55))/(9.1));
-      }
-//
-      int iflagb = 0;
-      straw_CommonTangent(Nmod,iStraws[2],Layer3,iStraws[3],Layer4,Itnbst,zv1,xv1,zv2,xv2,iflagb);
-      if(fabs(zv2-zv1) > 1.0e-6) {
-                                 Gradv = (xv2 - xv1) / (zv2 - zv1);
-      }
-      if(fabs(zv2-zv1) <= 1.0e-6) {
-                                  return;
-      }
-      Cintv = xv1 - (Gradv * zv1);
-//
-      float Zwire3vb = Zw[0];
-      float Xwire3vb = Xw[0];
-      float Zint3vb  = 0.0;
-      float Xint3vb  = 0.0;
-      straw_ClosestPoint(Gradv,Cintv,Zwire3vb,Xwire3vb,Zint3vb,Xint3vb);
-      float Dist3vb = sqrt((Zwire3vb-Zint3vb)*(Zwire3vb-Zint3vb) + (Xwire3vb-Xint3vb)*(Xwire3vb-Xint3vb));
-      if(Dist3vb > 1.2*Size[0]) {
-                                return;
-      }
-      float Zpt3vb = 0.0;
-      float Xpt3vb = 0.0;
-      straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[2],Layer3,Nmod,Zpt3vb,Xpt3vb);
-      float Zwire4vb = Zw[1];
-      float Xwire4vb = Xw[1];
-      float Zint4vb  = 0.0;
-      float Xint4vb  = 0.0;
-      straw_ClosestPoint(Gradv,Cintv,Zwire4vb,Xwire4vb,Zint4vb,Xint4vb);
-      float Dist4vb = sqrt((Zwire4vb-Zint4vb)*(Zwire4vb-Zint4vb) + (Xwire4vb-Xint4vb)*(Xwire4vb-Xint4vb));
-      if(Dist4vb > 1.2*Size[1]) {
-                                return;
-      }
-      float Zpt4vb = 0.0;
-      float Xpt4vb = 0.0;
-      straw_NearestTangent(zv1,xv1,zv2,xv2,iStraws[3],Layer4,Nmod,Zpt4vb,Xpt4vb);
-//
-      zu1 = zv1;
-      v2xy(xv1,yv1,xx1,yy1);
-      xy2u(xx1,yy1,xu1,yu1);
-//
-      zu2 = zv2;
-      v2xy(xv2,yv2,xx2,yy2);
-      xy2u(xx2,yy2,xu2,yu2);
-//
-      if(fabs(zu2-zu1) > 1.0e-6) {
-                                 Gradu =(xu2 - xu1)/(zu2 - zu1);
-      }
-      if(fabs(zu2-zu1) <= 1.0e-6) {
-                                  return;
-      }
-      Cintu = xu1 - (Gradu * zu1);
-//
-      float Zwire12ub = Zw[2];
-      float Xwire12ub = Xw[2];
-      float Zint12ub  = 0.0;
-      float Xint12ub  = 0.0;
-      straw_ClosestPoint(Gradu,Cintu,Zwire12ub,Xwire12ub,Zint12ub,Xint12ub);
-      float Dist12ub = sqrt((Zwire12ub-Zint12ub)*(Zwire12ub-Zint12ub) + (Xwire12ub-Xint12ub)*(Xwire12ub-Xint12ub));
-      if(Dist12ub > 1.2*Size[2]) {
-                                 return;
-      }
-      float Zpt12ub = 0.0;
-      float Xpt12ub = 0.0;
-      if(iStraws[1] > 0) {
-        straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[1],Layer2,Nmod,Zpt12ub,Xpt12ub);
-      }
-      if(iStraws[0] > 0) {
-        straw_NearestTangent(zu1,xu1,zu2,xu2,iStraws[0],Layer1,Nmod,Zpt12ub,Xpt12ub);
-      }
-      float Res12ub = sqrt((Zpt12ub - Zint12ub)*(Zpt12ub - Zint12ub) + (Xpt12ub - Xint12ub)*(Xpt12ub - Xint12ub));
-      Res12ub = Res12ub*10000.0;
-      float Res4vb = sqrt((Zpt4vb - Zint4vb)*(Zpt4vb - Zint4vb) + (Xpt4vb - Xint4vb)*(Xpt4vb - Xint4vb));
-      Res4vb = Res4vb*10000.0;
-      float Res3vb = sqrt((Zpt3vb - Zint3vb)*(Zpt3vb - Zint3vb) + (Xpt3vb - Xint3vb)*(Xpt3vb - Xint3vb));
-      Res3vb = Res3vb*10000.0;
-// ---------------------------------------------------------------------
-// Convert all points back into xy frame for fitting:
-// ---------------------------------------------------------------------
-      float Zpt3b = Zpt3vb;
-      float Xpt3b = 0.0;
-      v2xy(Xpt3vb,yv1,Xpt3b,yy1); 
-//
-      float Zpt4b = Zpt4vb;
-      float Xpt4b = 0.0;
-      v2xy(Xpt4vb,yv2,Xpt4b,yy2);
-//
-      float Zpt12b = Zpt12ub;
-      float Xpt12b = 0.0;
-      u2xy(Xpt12ub,yu3,Xpt12b,yy3);
-//
-      straw_FillArray(iStraws[2],Layer3,Nmod,Zpt3b,Xpt3b);
-      straw_FillArray(iStraws[3],Layer4,Nmod,Zpt4b,Xpt4b);
-      if(iStraws[1] > 0) {
-        straw_FillArray(iStraws[1],Layer2,Nmod,Zpt12b,Xpt12b);
-      }
-      if(iStraws[0] > 0) {
-        straw_FillArray(iStraws[0],Layer1,Nmod,Zpt12b,Xpt12b);
-      }
-      Yhits[iStraws[2]-1][Layer3-1][Nmod-1] = Ybest;
-      Yhits[iStraws[3]-1][Layer4-1][Nmod-1] = Ybest;
-      if(iStraws[1] > 0) {
-        Yhits[iStraws[1]-1][Layer2-1][Nmod-1] = Ybest;
-      }
-      if(iStraws[0] > 0) {
-        Yhits[iStraws[0]-1][Layer1-1][Nmod-1] = Ybest;
-      }
-      Mask[iStraws[2]-1][Layer3-1][Nmod-1] = 1;
-      Mask[iStraws[3]-1][Layer4-1][Nmod-1] = 1;
-      if(iStraws[1] > 0) {
-        Mask[iStraws[1]-1][Layer2-1][Nmod-1] = 1;
-      }
-      if(iStraws[0] > 0) {
-        Mask[iStraws[0]-1][Layer1-1][Nmod-1] = 1;
-      }
-      Trkin3[0][Nmod-1]  = float(iStraws[0]);
-      Trkin3[1][Nmod-1]  = float(iStraws[1]);
-      Trkin3[2][Nmod-1]  = float(iStraws[2]);
-      Trkin3[3][Nmod-1]  = float(iStraws[3]);
-      float Zwire12b = 0.0;
-      float Xwire12b = 0.0;
-      float Zint12b  = 0.0;
-      float Xint12b  = 0.0;
-      if(iStraws[0] > 0) {
-        Trkin3[4][Nmod-1]  = Hits[iStraws[0]-1][Layer1-1][Nmod-1];
-        Trkin3[5][Nmod-1]  = Zpt12b;
-        Trkin3[6][Nmod-1]  = Xpt12b;
-        Trkin3[7][Nmod-1]  = Ybest;
-        Zwire12b = Zwire12ub;
-        Xwire12b = 0.0;
-        u2xy(Xwire12ub,yu3,Xwire12b,yy3);
-        Zint12b = Zint12ub;
-        Xint12b = 0.0;
-        u2xy(Xint12ub,yu3,Xint12b,yy3);
-        Trkin3[8][Nmod-1]  = Zwire12b;
-        Trkin3[9][Nmod-1]  = Xwire12b;
-        Trkin3[10][Nmod-1] = Zint12b;
-        Trkin3[11][Nmod-1] = Xint12b;
-      }
-      if(iStraws[1] > 0) {
-        Trkin3[12][Nmod-1] = Hits[iStraws[1]-1][Layer2-1][Nmod-1];
-        Trkin3[13][Nmod-1] = Zpt12b;
-        Trkin3[14][Nmod-1] = Xpt12b;
-        Trkin3[15][Nmod-1] = Ybest;
-        Zwire12b = Zwire12ub;
-        Xwire12b = 0.0;
-        u2xy(Xwire12ub,yu3,Xwire12b,yy3);
-        Zint12b  = Zint12ub;
-        Xint12b  = 0.0;
-        u2xy(Xint12ub,yu3,Xint12b,yy3);
-        Trkin3[16][Nmod-1] = Zwire12b;
-        Trkin3[17][Nmod-1] = Xwire12b;
-        Trkin3[18][Nmod-1] = Zint12b;
-        Trkin3[19][Nmod-1] = Xint12b;
-      }
-      Trkin3[20][Nmod-1] = Hits[iStraws[2]-1][Layer3-1][Nmod-1];
-      Trkin3[21][Nmod-1] = Zpt3b;
-      Trkin3[22][Nmod-1] = Xpt3b;
-      Trkin3[23][Nmod-1] = Ybest;
-//
-      float Zwire3b = Zwire3vb;
-      float Xwire3b = 0.0; 
-      v2xy(Xwire3vb,yv1,Xwire3b,yy1);
-      float Zint3b = Zint3vb;
-      float Xint3b = 0.0;
-      v2xy(Xint3vb,yv1,Xint3b,yy1);
-      Trkin3[24][Nmod-1] = Zwire3b;
-      Trkin3[25][Nmod-1] = Xwire3b;
-      Trkin3[26][Nmod-1] = Zint3b;
-      Trkin3[27][Nmod-1] = Xint3b;
-//
-      Trkin3[28][Nmod-1] = Hits[iStraws[3]-1][Layer4-1][Nmod-1];
-      Trkin3[29][Nmod-1] = Zpt4b;
-      Trkin3[30][Nmod-1] = Xpt4b;
-      Trkin3[31][Nmod-1] = Ybest;
-      float Zwire4b = Zwire4vb;
-      float Xwire4b = 0.0; 
-      v2xy(Xwire4vb,yv2,Xwire4b,yy2);
-      float Zint4b = Zint4vb;
-      float Xint4b = 0.0; 
-      v2xy(Xint4vb,yv2,Xint4b,yy2);
-      Trkin3[32][Nmod-1] = Zwire4b;
-      Trkin3[33][Nmod-1] = Xwire4b;
-      Trkin3[34][Nmod-1] = Zint4b;
-      Trkin3[35][Nmod-1] = Xint4b;
-// ------------------------------------------------------------------
-// Finally make the fitted TE from the obtained space points.
-// Must set up xzaty in xy frame for this:
-// ------------------------------------------------------------------
-	getEndsLoop(Nmod, Ybest, iStraws, 3);
-//
-      int Ntofit = Nposte;
-      for(int ifit=1; ifit<=Nposte; ifit++) {
-         Xptsfit[ifit-1] = Xypost[1][ifit-1][Nmod-1];
-         Zptsfit[ifit-1] = Xypost[0][ifit-1][Nmod-1];
-      }
-      float Grfit = 0.0;
-      float Cfit  = 0.0;
-      Linfit(Zptsfit,Xptsfit,Ntofit,Grfit,Cfit);
-      float zte1 = 0.0;
-      float xte1 = 0.0;
-      float zte2 = 0.0;
-      float xte2 = 0.0;
-      straw_ClosestPoint(Grfit,Cfit,Zpt12b,Xpt12b,zte1,xte1);
-      straw_ClosestPoint(Grfit,Cfit,Zpt4b,Xpt4b,zte2,xte2);
-//
-      float xdiff  = xte2 - xte1;
-      float zdiff  = zte2 - zte1;
-      float Phizx  = phi_arctan(xdiff,zdiff);
-      float Phizxd = Phizx*180.0/Pibk;
-      if(Phizxd > 180.0) {
-                         Phizxd = Phizxd - 360.0;
-      }
-// --------------------------------------------
-// Turn into milliradians:
-// --------------------------------------------
-      float Phizxmr = Phizxd*1000.0*Pibk/180.0;
-//
-      Trkin3[36][Nmod-1] = zte1;
-      Trkin3[37][Nmod-1] = xte1;
-      Trkin3[38][Nmod-1] = zte2;
-      Trkin3[39][Nmod-1] = xte2;
-      float Grrr = (xte2 - xte1) / (zte2 - zte1);
-      float Ctrk = xte1 - (Grrr * zte1);
-      Trkin3[40][Nmod-1] = Grrr;
-      Trkin3[41][Nmod-1] = Ctrk;
-// ------------------------------------------------------------------
-// Finally store residuals to fitted track.
-// ------------------------------------------------------------------
-      float Zintt3 = 0.0;
-      float Xintt3 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire3b,Xwire3b,Zintt3,Xintt3);
-      float Zptt3  = 0.0;
-      float Xptt3  = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[2],Layer3,Nmod,Zptt3,Xptt3);
-      float Zintt4 = 0.0;
-      float Xintt4 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire4b,Xwire4b,Zintt4,Xintt4);
-      float Zptt4  = 0.0;
-      float Xptt4  = 0.0;
-      straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[3],Layer4,Nmod,Zptt4,Xptt4);
-//
-      float Zintt12 = 0.0;
-      float Xintt12 = 0.0;
-      straw_ClosestPoint(Grrr,Ctrk,Zwire12b,Xwire12b,Zintt12,Xintt12);
-      float Zptt12 = 0.0;
-      float Xptt12 = 0.0;
-      if(iStraws[1] > 0) {
-        straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[1],Layer2,Nmod,Zptt12,Xptt12);
-      }
-      if(iStraws[0] > 0) {
-        straw_NearestTangent(zte1,xte1,zte2,xte2,iStraws[0],Layer1,Nmod,Zptt12,Xptt12);
-      }
-// ------------------------------------------------------------------
-// (Zpt1,Xpt1) etc are the space points on the drift circles that 
-// have been fitted to make the track.
-// (Zptt1,Xptt1) are the closest points on the drift circles to the
-// fitted track...
-// ------------------------------------------------------------------
-      float Rest3 = sqrt((Zptt3 - Zintt3)*(Zptt3 - Zintt3) + (Xptt3 - Xintt3)*(Xptt3 - Xintt3));
-      Rest3 = Rest3*10000.0;
-      float Rest4 = sqrt((Zptt4 - Zintt4)*(Zptt4 - Zintt4) + (Xptt4 - Xintt4)*(Xptt4 - Xintt4));
-      Rest4 = Rest4*10000.0;
-      float Rest12 = sqrt((Zptt12 - Zintt12)*(Zptt12 - Zintt12) + (Xptt12 - Xintt12)*(Xptt12 - Xintt12));
-      Rest12 = Rest12*10000.0;
-//
-      if(iStraws[0] > 0) {
-        Trkin3[42][Nmod-1] = Rest12;
-      }
-      if(iStraws[1] > 0) {
-        Trkin3[43][Nmod-1] = Rest12;
-      }
-      Trkin3[44][Nmod-1] = Rest3;
-      Trkin3[45][Nmod-1] = Rest4;
-      if(iStraws[0] > 0) {
-        Trkin3[46][Nmod-1] = Zptt12;
-        Trkin3[47][Nmod-1] = Xptt12;
-      }
-      if(iStraws[1] > 0) {
-        Trkin3[48][Nmod-1] = Zptt12;
-        Trkin3[49][Nmod-1] = Xptt12;
-      }
-      Trkin3[50][Nmod-1] = Zptt3;
-      Trkin3[51][Nmod-1] = Xptt3;
-      Trkin3[52][Nmod-1] = Zptt4;
-      Trkin3[53][Nmod-1] = Xptt4;
-//
-      Zxhit[0][iStraws[2]-1][Layer3-1][Nmod-1] = Zptt3;
-      Zxhit[1][iStraws[2]-1][Layer3-1][Nmod-1] = Xptt3;
-      Zxhit[0][iStraws[3]-1][Layer4-1][Nmod-1] = Zptt4;
-      Zxhit[1][iStraws[3]-1][Layer4-1][Nmod-1] = Xptt4;
-      if(iStraws[1] > 0) {
-        Zxhit[0][iStraws[1]-1][Layer2-1][Nmod-1] = Zptt12;
-        Zxhit[1][iStraws[1]-1][Layer2-1][Nmod-1] = Xptt12;
-      }
-      if(iStraws[0] > 0) {
-        Zxhit[0][iStraws[0]-1][Layer1-1][Nmod-1] = Zptt12;
-        Zxhit[1][iStraws[0]-1][Layer1-1][Nmod-1] = Xptt12;
-      }
-}
+	n_HitsOut++;
+      StrHist.fTrkMod[0]->Fill(Nmod+0.5);
 
+}
 float getSingleStraw(int Nmod, int ilay, int istr) {
 
-                if(ilay <= 2) {
-                  straw.Xbot = strawGeom_u[Nmod-1][ilay-1][istr-1][0][0];
-                  straw.Ybot = strawGeom_u[Nmod-1][ilay-1][istr-1][0][1];
-                  straw.Zbot = strawGeom_u[Nmod-1][ilay-1][istr-1][0][2];
-                  straw.Xtop = strawGeom_u[Nmod-1][ilay-1][istr-1][1][0];
-                  straw.Ytop = strawGeom_u[Nmod-1][ilay-1][istr-1][1][1];
-                  straw.Ztop = strawGeom_u[Nmod-1][ilay-1][istr-1][1][2];
+                if(ilay < 2) {
+                  straw.Xbot = strawGeom_u[Nmod][ilay][istr][0][0];
+                  straw.Ybot = strawGeom_u[Nmod][ilay][istr][0][1];
+                  straw.Zbot = strawGeom_u[Nmod][ilay][istr][0][2];
+                  straw.Xtop = strawGeom_u[Nmod][ilay][istr][1][0];
+                  straw.Ytop = strawGeom_u[Nmod][ilay][istr][1][1];
+                  straw.Ztop = strawGeom_u[Nmod][ilay][istr][1][2];
 
                 }
-                if(ilay > 2) {
-                  straw.Xbot = strawGeom_v[Nmod-1][ilay-1][istr-1][0][0];
-                  straw.Ybot = strawGeom_v[Nmod-1][ilay-1][istr-1][0][1];
-                  straw.Zbot = strawGeom_v[Nmod-1][ilay-1][istr-1][0][2];
-                  straw.Xtop = strawGeom_v[Nmod-1][ilay-1][istr-1][1][0];
-                  straw.Ytop = strawGeom_v[Nmod-1][ilay-1][istr-1][1][1];
-                  straw.Ztop = strawGeom_v[Nmod-1][ilay-1][istr-1][1][2];
+                if(ilay >= 2) {
+                  straw.Xbot = strawGeom_v[Nmod][ilay][istr][0][0];
+                  straw.Ybot = strawGeom_v[Nmod][ilay][istr][0][1];
+                  straw.Zbot = strawGeom_v[Nmod][ilay][istr][0][2];
+                  straw.Xtop = strawGeom_v[Nmod][ilay][istr][1][0];
+                  straw.Ytop = strawGeom_v[Nmod][ilay][istr][1][1];
+                  straw.Ztop = strawGeom_v[Nmod][ilay][istr][1][2];
                 }
 }
 float getEnds(int Nmod, int ilay, int istr, int arg) {
 	if (arg == 1) {
 	
-                strawEnds.Zendc = strawGeom[Nmod-1][ilay-1][istr-1][0][2];
-                strawEnds.Xendc = strawGeom[Nmod-1][ilay-1][istr-1][0][0];
-                strawEnds.Zenda = strawGeom[Nmod-1][ilay-1][istr-1][1][2];
-                strawEnds.Xenda = strawGeom[Nmod-1][ilay-1][istr-1][1][0];
+                strawEnds.Zendc = strawGeom[Nmod][ilay][istr][0][2];
+                strawEnds.Xendc = strawGeom[Nmod][ilay][istr][0][0];
+                strawEnds.Zenda = strawGeom[Nmod][ilay][istr][1][2];
+                strawEnds.Xenda = strawGeom[Nmod][ilay][istr][1][0];
 	}
 	else if (arg == 2) {
-		strawEnds.Zendcb = strawGeom[Nmod-1][ilay-1][istr-1][0][2];
-		strawEnds.Xendcb = strawGeom[Nmod-1][ilay-1][istr-1][0][0];
-		strawEnds.Zendab = strawGeom[Nmod-1][ilay-1][istr-1][1][2];
-		strawEnds.Xendab = strawGeom[Nmod-1][ilay-1][istr-1][1][0];
+		strawEnds.Zendcb = strawGeom[Nmod][ilay][istr][0][2];
+		strawEnds.Xendcb = strawGeom[Nmod][ilay][istr][0][0];
+		strawEnds.Zendab = strawGeom[Nmod][ilay][istr][1][2];
+		strawEnds.Xendab = strawGeom[Nmod][ilay][istr][1][0];
 	}
 	else if (arg == 3) {
-		strawEnds.Zzendc = strawGeom[Nmod-1][ilay-1][istr-1][0][2];
-		strawEnds.Xxendc = strawGeom[Nmod-1][ilay-1][istr-1][0][0];
-		strawEnds.Zzenda = strawGeom[Nmod-1][ilay-1][istr-1][1][2];
-		strawEnds.Xxenda = strawGeom[Nmod-1][ilay-1][istr-1][1][0];
+		strawEnds.Zzendc = strawGeom[Nmod][ilay][istr][0][2];
+		strawEnds.Xxendc = strawGeom[Nmod][ilay][istr][0][0];
+		strawEnds.Zzenda = strawGeom[Nmod][ilay][istr][1][2];
+		strawEnds.Xxenda = strawGeom[Nmod][ilay][istr][1][0];
 	}
 }
 int getEndsLoop(int Nmod, float Y, int iStraws[LAYERS], int arg) {
 
 	if (arg == 1) {
-          for(int ilay=1; ilay<=4; ilay++) {
-             for(int istr=1; istr<=32; istr++) {
+          for(int ilay = 0; ilay < LAYERS; ilay++) {
+             for(int istr = 0; istr < STRAWS; istr++) {
                 getEnds(Nmod, ilay, istr, 1);
 // ------------------------------------------------------------
 // Work out wire position at the vertical position (y) at which
@@ -4656,15 +2642,15 @@ int getEndsLoop(int Nmod, float Y, int iStraws[LAYERS], int arg) {
 // So Xzaty contains the z/x wire positions in the u frame for
 // Layers 1 and 2. And in the v frame for Layers 3 and 4.
 // ------------------------------------------------------------------
-                Xzaty[0][istr-1][ilay-1][Nmod-1] = straw.Ztop;
-                Xzaty[1][istr-1][ilay-1][Nmod-1] = straw.Xtop;
+                Xzaty[0][istr][ilay][Nmod] = straw.Ztop;
+                Xzaty[1][istr][ilay][Nmod] = straw.Xtop;
              }
           }
 	}
 
 	if (arg == 2) {
-      for(int istr=1; istr<=32; istr++) {
-         for(int ilay=1; ilay<=4; ilay++) {
+          for(int ilay = 0; ilay < LAYERS; ilay++) {
+             for(int istr = 0; istr < STRAWS; istr++) {
 		getEnds(Nmod, ilay, istr, 2);
 // ------------------------------------------------------------
 // Work out wire position at the vertical position (y) at which
@@ -4680,8 +2666,8 @@ int getEndsLoop(int Nmod, float Y, int iStraws[LAYERS], int arg) {
 // So Xzaty contains the z/x wire positions in the u frame for
 // Layers 1 and 2. And in the v frame for Layers 3 and 4.
 // ------------------------------------------------------------------
-            Xzaty[0][istr-1][ilay-1][Nmod-1] = straw.Ztop;
-            Xzaty[1][istr-1][ilay-1][Nmod-1] = straw.Xtop;
+            Xzaty[0][istr][ilay][Nmod] = straw.Ztop;
+            Xzaty[1][istr][ilay][Nmod] = straw.Xtop;
          }
       }
 		}
@@ -4689,12 +2675,12 @@ int getEndsLoop(int Nmod, float Y, int iStraws[LAYERS], int arg) {
 	if (arg == 3) {
 
 	float Ybest = Y;
-	for (int ilay = 0; ilay < 4; ilay++) {
-		getEnds(Nmod, ilay+1, iStraws[ilay], 3);
+	for (int ilay = 0; ilay < LAYERS; ilay++) {
+		getEnds(Nmod, ilay, iStraws[ilay], 3);
       float Zzaty  = strawEnds.Zzendc;
       float Xxaty  = strawEnds.Xxendc + ((strawEnds.Xxenda-strawEnds.Xxendc)*(Ybest -(-4.55))/(9.1));
-      Xzaty[0][iStraws[ilay]-1][ilay][Nmod-1] = Zzaty;
-      Xzaty[1][iStraws[ilay]-1][ilay][Nmod-1] = Xxaty;
+      Xzaty[0][iStraws[ilay]][ilay][Nmod] = Zzaty;
+      Xzaty[1][iStraws[ilay]][ilay][Nmod] = Xxaty;
 	}
 
 	}

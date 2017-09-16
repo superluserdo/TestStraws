@@ -2,8 +2,29 @@ Changes to Barry's Teststraws.C code:
 
 - Can now take command line options like verbosity, filenames, file creation, etc, and parse them.
 
+- ./Teststraws is now compiled with the command "make" (runs on "makefile" in the same folder).
+
 - Prints set of instructions when "--help" or "-h" is typed.
 
 - variable = variable + 1; is now variable++;
 
-- Added error checking when loading user-specified file
+- variable = variable * 100.0; is now variable *= 100.0; etc.
+
+- Added error checking when loading user-specified data file
+
+- Moved some stuff into a TestStraws.h header file
+
+- Deleted Trkinf/2/3 from new version as they don't appear to do anything
+
+- xy2u, xy2v, u2xy, v2xy are now one function, coordConvert, that takes a u/v (0/1) argument and a "to xy"/"to u/v" (0/1) argument.
+
+- Strte2 and Strte3 are now one function, straw_FindEvent, that specifies the side that has a hit on both layers.
+
+- Removed iStraws as argument to straw_FindEvent, since it seeemed unnecessary.
+
+- for (int index=1; index<=max; index++) is now for (int index = 1; index < max; index++). 
+  This means much more uses of array[index] instead of array[index-1].
+  Also, this means that eg., Nmod=2 means we are looking at the 3rd module (the number 3 would still be written to file/stdout though).
+
+- Fixed "potential memory leak" warnings by giving the TH1Fs unique names
+
